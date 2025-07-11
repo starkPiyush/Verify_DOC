@@ -1,0 +1,8 @@
+flask
+pillow
+pdf2image
+opencv-python
+numpy
+pytesseract
+rapidfuzz
+ultralytics

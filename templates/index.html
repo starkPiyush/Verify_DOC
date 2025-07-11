@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Document Verification System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 18px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+        }
+        .drop-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: #f9f9f9;
+            cursor: pointer;
+            margin-bottom: 18px;
+            transition: background 0.2s;
+        }
+        .drop-area.active {
+            background: #e0e7ff;
+        }
+        button {
+            margin: 10px 5px 0 0;
+            padding: 10px 24px;
+            border-radius: 6px;
+            border: none;
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background: #764ba2;
+        }
+        #status {
+            margin-top: 18px;
+            font-size: 1.1em;
+        }
+        .loader {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border: 3px solid #667eea;
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg);}
+            100% { transform: rotate(360deg);}
+        }
+        .result-item {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 18px;
+            border: 2px solid #ddd;
+        }
+        .pass {
+            color: green;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .fail {
+            color: red;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        details {
+            margin-top: 10px;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.95em;
+            max-height: 200px;
+            overflow: auto;
+        }
+    </style>
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
+</head>
+<body>
+    <div class="container">
+        <h1>AI Document Verification</h1>
+        <form id="verifyForm">
+            <label for="userName">Enter Application Name:</label>
+            <input type="text" id="userName" name="userName" required>
+            <div id="dropArea" class="drop-area">
+                <p>Drag & drop documents here or click to select files</p>
+                <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">
+            </div>
+            <div id="fileList"></div>
+            <button type="submit" id="submitBtn" disabled>Verify Documents</button>
+        </form>
+        <div id="status"></div>
+        <div id="results"></div>
+        <script>
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const verifyForm = document.getElementById('verifyForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const fileListDiv = document.getElementById('fileList');
+        let files = [];
+        let fileStates = [];
+
+        dropArea.onclick = () => fileInput.click();
+        dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('active'); };
+        dropArea.ondragleave = e => { e.preventDefault(); dropArea.classList.remove('active'); };
+        dropArea.ondrop = e => {
+            e.preventDefault();
+            dropArea.classList.remove('active');
+            handleFiles(e.dataTransfer.files);
+        };
+        fileInput.onchange = e => handleFiles(e.target.files);
+
+        function handleFiles(fileList) {
+            for (let file of fileList) {
+                if (!files.some(f => f.name === file.name && f.size === file.size)) {
+                    files.push(file);
+                }
+            }
+            fileStates = files.map(f => ({
+                file: f,
+                predictedType: '',
+                confirmedType: '',
+                confirmed: false
+            }));
+            classifyAllFiles();
+        }
+
+        async function classifyAllFiles() {
+            fileListDiv.innerHTML = '';
+            for (let i = 0; i < fileStates.length; i++) {
+                const fd = new FormData();
+                fd.append('file', fileStates[i].file);
+                fileListDiv.innerHTML += `<div class="result-item" id="fileItem${i}">
+                    <h3>${fileStates[i].file.name}</h3>
+                    <p>Classifying...</p>
+                </div>`;
+                const res = await fetch('/classify_document', { method: 'POST', body: fd });
+                const data = await res.json();
+                fileStates[i].predictedType = data.document_type || 'Unknown';
+                fileStates[i].confirmedType = data.document_type || 'Unknown';
+                renderFileList();
+            }
+        }
+
+        function renderFileList() {
+            fileListDiv.innerHTML = '';
+            fileStates.forEach((f, idx) => {
+                let html = `<div class="result-item">
+                    <h3>${f.file.name}</h3>
+                    <p><b>Predicted Type:</b> ${f.predictedType}</p>
+                    <span style="display:${f.confirmed ? 'none':'inline'}">
+                        <label>Is this correct?</label>
+                        <button type="button" onclick="window.confirmType(${idx},true)">Yes</button>
+                        <button type="button" onclick="window.confirmType(${idx},false)">No</button>
+                    </span>
+                    <span id="manualType${idx}" style="display:none;">
+                        <select id="typeSelect${idx}">
+                            <option value="">Select type</option>
+                            {% for type in doc_types %}
+                            <option value="{{ type }}">{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" onclick="window.setManualType(${idx})">Confirm</button>
+                    </span>
+                    <span style="color:green;display:${f.confirmed ? 'inline':'none'}">
+                        Confirmed: <b>${f.confirmedType}</b>
+                    </span>
+                </div>`;
+                fileListDiv.innerHTML += html;
+            });
+            submitBtn.disabled = !fileStates.every(f => f.confirmed);
+        }
+        window.confirmType = function(idx, isYes) {
+            if (isYes) {
+                fileStates[idx].confirmed = true;
+                renderFileList();
+            } else {
+                document.getElementById('manualType'+idx).style.display = 'inline';
+            }
+        };
+        window.setManualType = function(idx) {
+            let sel = document.getElementById('typeSelect'+idx);
+            if (sel.value) {
+                fileStates[idx].confirmedType = sel.value;
+                fileStates[idx].confirmed = true;
+                renderFileList();
+            }
+        };
+
+        verifyForm.onsubmit = async (e) => {
+            e.preventDefault();
+            if (files.length === 0) {
+                alert('Please select at least one document.');
+                return;
+            }
+            const userName = document.getElementById('userName').value.trim();
+            if (!userName) {
+                alert('Please enter the application name.');
+                return;
+            }
+            submitBtn.disabled = true;
+            statusDiv.innerHTML = '<span class="loader"></span> Processing...';
+            resultsDiv.innerHTML = '';
+            const formData = new FormData();
+            files.forEach(f => formData.append('files', f));
+            fileStates.forEach(f => formData.append('confirmed_types', f.confirmedType));
+            formData.append('user_name', userName);
+            const res = await fetch('/process_documents', { method: 'POST', body: formData });
+            const data = await res.json();
+            submitBtn.disabled = false;
+            statusDiv.innerHTML = '';
+            if (data.results) {
+                let html = '';
+                data.results.forEach(r => {
+                    html += `<div class="result-item">
+                        <h3>${r.filename}</h3>
+                        <p><b>Document Type:</b> ${r.doc_type} ${r.confidence !== null ? '(Confidence: ' + r.confidence + ')' : ''}</p>
+                        <p><b>Extracted Name:</b> ${r.extracted_name || '<i>Not found</i>'}</p>
+                        <p><b>Application Name:</b> ${r.user_name}</p>
+                        <p><b>Match Score:</b> ${r.match_score}% 
+                            <span class="${r.match_result === 'pass' ? 'pass' : 'fail'}">
+                                ${r.match_result === 'pass' ? '&#10004;' : '&#10008;'}
+                            </span>
+                        </p>
+                        ${r.fields && Object.keys(r.fields).length > 0 ? `<details><summary>Show extracted fields</summary><pre>${Object.entries(r.fields).map(([k,v]) => k+': '+v).join('\n')}</pre></details>` : ''}
+                        <details><summary>Show raw OCR text</summary><pre>${r.raw_text}</pre></details>
+                        ${r.annotated_image ? `<details><summary>Show annotated image</summary><img src="data:image/jpeg;base64,${r.annotated_image}" style="max-width:100%;border-radius:8px;margin-top:10px;" /></details>` : ''}
+                    </div>`;
+                });
+                resultsDiv.innerHTML = html;
+            } else {
+                resultsDiv.innerHTML = `<p style="color:red;">${data.error || 'Verification failed.'}</p>`;
+            }
+            files = [];
+            fileStates = [];
+            dropArea.innerHTML = `<p>Drag & drop documents here or click to select files</p><input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">`;
+            fileListDiv.innerHTML = '';
+        };
+        </script>
+    </div>
+</body>
+</html>
