@@ -41,6 +41,87 @@ DOC_MODEL_PATHS = {
     "Transgender Certificate": "models/trans_best.pt"
 }
 
+def extract_bonafide_fields(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
+
+    fields = {
+        "college_name": None,
+        "student_name": None,
+        "class": None,
+        "academic_year": None
+    }
+
+    college_match = re.search(r'(?i)([A-Z ]+LAW COLLEGE)', text)
+    if college_match:
+        fields['college_name'] = college_match.group(1).title().strip()
+
+    name_match = re.search(r'This is to certify that\s+(?:KU\.?\s+)?([A-Z ]+?)\s+is/was', text)
+    if name_match:
+        fields['student_name'] = name_match.group(1).title().strip()
+
+    class_match = re.search(r'class\s+([A-Z\s]+\d+)', text)
+    if class_match:
+        fields['class'] = class_match.group(1).strip()
+
+    year_match = re.search(r'academic year\s+([0-9]{4}-[0-9]{4})', text)
+    if year_match:
+        fields['academic_year'] = year_match.group(1).strip()
+
+    return fields
+
+
+def extract_marksheet_fields(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
+
+    fields = {
+        "student_name": None,
+        "roll_number": None,
+        "percentage": None
+    }
+
+    keyword_map = {
+        "name of the student": "student_name",
+        "roll no": "roll_number",
+        "percentage": "percentage"
+    }
+
+    lines = [line.strip().lower() for line in text.splitlines() if line.strip()]
+
+    for line in lines:
+        for keyword, field in keyword_map.items():
+            if keyword in line:
+                try:
+                    after = line.split(keyword)[1]
+                    after = after.strip(" :.-").strip()
+                    fields[field] = after
+                except:
+                    fields[field] = "not_found"
+
+    return fields
+
+
+def process_with_regex(image, document_type):
+    fields = {}
+    annotated_image = image.copy()
+
+    if document_type == "Bonafide Certificate":
+        fields = extract_bonafide_fields(image)
+    elif document_type == "Marksheet":
+        fields = extract_marksheet_fields(image)
+    else:
+        # fallback generic OCR
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
+        fields = {
+            "extracted_text": text.strip(),
+            "document_type": document_type
+        }
+
+    return fields, annotated_image
+
+
 def classify_document(image_path):
     image = Image.open(image_path)
     text = pytesseract.image_to_string(image, lang='eng')
@@ -64,16 +145,46 @@ def load_image(file_path):
     else:
         return cv2.cvtColor(np.array(Image.open(file_path).convert("RGB")), cv2.COLOR_RGB2BGR)
 
+# def extract_name_from_text(text):
+#     # Simple regex for name extraction, can be improved per document type
+#     match = re.search(r'[:\s]+([A-Z][a-zA-Z\s]+)', text, re.IGNORECASE)
+#     if match:
+#         return match.group(1).strip()
+#     # fallback: first line with more than 2 words
+#     for line in text.splitlines():
+#         if len(line.split()) > 2:
+#             return line.strip()
+#     return ""
+
 def extract_name_from_text(text):
-    # Simple regex for name extraction, can be improved per document type
-    match = re.search(r'name[:\s]+([A-Z][a-zA-Z\s]+)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    # fallback: first line with more than 2 words
-    for line in text.splitlines():
-        if len(line.split()) > 2:
-            return line.strip()
-    return ""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    probable_names = []
+
+    # Heuristic: lines with 2–4 capitalized words, likely to be names
+    for line in lines:
+        words = line.split()
+        if 2 <= len(words) <= 4 and all(w[0].isupper() for w in words if w.isalpha()):
+            probable_names.append(line)
+
+    # Try to find name before DOB or Gender (most common structure)
+    dob_keywords = ["dob", "date of birth"]
+    gender_keywords = ["male", "female", "other"]
+
+    dob_idx = -1
+    for i, line in enumerate(lines):
+        if any(k in line.lower() for k in dob_keywords):
+            dob_idx = i
+            break
+
+    if dob_idx > 0:
+        for i in range(dob_idx - 2, -1, -1):
+            if lines[i] in probable_names:
+                return lines[i]
+
+    # Else: return the most "alphabet-heavy" probable name
+    best = max(probable_names, key=lambda x: sum(c.isalpha() for c in x), default="")
+    return best
+
 
 def process_document(file_path, doc_type):
     image = load_image(file_path)
@@ -100,16 +211,29 @@ def process_document(file_path, doc_type):
             "annotated_image": image_to_base64(annotated_image)
         }
     else:
-        # Regex + OCR fallback
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
-        name = extract_name_from_text(text)
-        return {
-            "extracted_name": name,
-            "raw_text": text,
-            "fields": {},
-            "annotated_image": None
-        }
+        # For regex-based documents
+        if doc_type in ["Bonafide Certificate", "Marksheet"]:
+            fields, annotated_image = process_with_regex(image, doc_type)
+            extracted_name = fields.get("student_name") or extract_name_from_text(pytesseract.image_to_string(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)))
+            raw_text = "\n".join([f"{k}: {v}" for k, v in fields.items()])
+            return {
+                "extracted_name": extracted_name,
+                "raw_text": raw_text,
+                "fields": fields,
+                "annotated_image": image_to_base64(annotated_image)
+            }
+        else:
+            # Generic fallback
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
+            name = extract_name_from_text(text)
+            return {
+                "extracted_name": name,
+                "raw_text": text,
+                "fields": {},
+                "annotated_image": None
+            }
+
 
 def normalize_name(name):
     if not name:
@@ -197,7 +321,7 @@ def process_documents_api():
             doc_info = process_document(file_path, doc_type)
             extracted_name = doc_info["extracted_name"]
             match_score = fuzzy_match_name(extracted_name, user_name)
-            match_result = "pass" if match_score >= 85 else "fail"
+            match_result = "pass" if match_score >= 80 else "fail"
             results.append({
                 "filename": file.filename,
                 "doc_type": doc_type,
