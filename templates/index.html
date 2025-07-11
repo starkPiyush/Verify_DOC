@@ -1,74 +1,281 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>AI Document Verification System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        :root {
+            --primary: #4f8cff;
+            --secondary: #7f56d9;
+            --accent: #38bdf8;
+            --success: #22d3ee;
+            --error: #f43f5e;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --bg-gradient1: #f8fbff;
+            --bg-gradient2: #e9f0ff;
+            --bg-gradient3: #f1f5ff;
+            --card-bg: #fff;
+            --border: #e5e7eb;
+            --hero-head: #111827;
+            --hero-gradient-text: linear-gradient(90deg, #4f8cff 0%, #7f56d9 100%);
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--bg-gradient1) 0%, var(--bg-gradient2) 70%, var(--bg-gradient3) 100%);
             min-height: 100vh;
-            padding: 20px;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+        @media (max-width: 600px) {
+            html, body {
+                margin-top: 60px;
+            }
+        }
+        .hero-bg {
+            width: 100vw;
+            height: 620px;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 164px;
+            padding-bottom: 64px;
+            position: relative;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #d1fae5;
+            color: #047857;
+            font-weight: 500;
+            font-size: 1em;
+            border-radius: 999px;
+            padding: 7px 18px 7px 14px;
+            margin-bottom: 1.8vw;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+            gap: 8px;
+        }
+        .hero-badge svg {
+            width: 18px;
+            height: 18px;
+        }
+        .hero-title {
+            font-size: 6.4em;
+            font-weight: 700;
+            color: var(--hero-head);
+            text-align: center;
+            margin-bottom: 18px;
+            letter-spacing: -0.02em;
+            max-width: 1000px;
+        }
+        .hero-title .gradient {
+            background: var(--hero-gradient-text);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-desc {
+            font-size: 1.1em;
+            color: rgb(146, 146, 146);
+            text-align: center;
+            max-width: 680px;
+            margin: 0 auto 32px auto;
+            font-weight: 300;
+            margin-bottom: 52px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+            margin-bottom: 38px;
+        }
+        .hero-btn-primary {
+            background: var(--hero-gradient-text);
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.08em;
+            border: none;
+            border-radius: 8px;
+            padding: 15px 36px;
+            box-shadow: 0 2px 16px 0 #4f8cff33;
+            cursor: pointer;
+            transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
+        }
+        .hero-btn-primary:hover {
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 4px 24px 0 #7f56d955;
+        }
+        .hero-btn-secondary {
+            background: #fff;
+            color: var(--hero-head);
+            font-weight: 600;
+            font-size: 1.08em;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px 32px;
+            box-shadow: 0 2px 8px 0 #e0e7ef33;
+            cursor: pointer;
+            transition:  0.18s, color 0.18s, box-shadow 0.18s;
+            letter-spacing: -0.01em;
+        }
+        .hero-btn-secondary:hover {
+            background: #f3f4f6;
+            border: 1.5px solid var(--primary);
+        }
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            justify-content: center;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+        .hero-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+        }
+        .hero-stat-icon {
+            font-size: 1.5em;
+            margin-bottom: 4px;
+        }
+        .hero-stat-value {
+            font-weight: 700;
+            font-size: 1.18em;
+            color: var(--hero-head);
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .hero-stat-label {
+            color: var(--text-secondary);
+            font-size: 1em;
+            font-weight: 400;
         }
         .container {
-            max-width: 700px;
+            width: 50vw;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 22px;
+            box-shadow: 0 10px 32px rgba(79,140,255,0.08);
+            padding: 40px 28px 28px 28px;
+            margin-bottom: 32px;
+            border: 1.5px solid var(--border);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 38px 0 18px 0;
+        }
+        .header-icon {
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, #7f56d9 0%, #4f8cff 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 24px 0 #4f8cff33, 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .header-icon svg {
+            width: 32px;
+            height: 32px;
+            color: #fff;
         }
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            font-size: 2.8em;
+            letter-spacing: -0.02em;
+            color: var(--primary);
+            background: rgb(38, 38, 38);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        label {
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: block;
+            color: var(--text-secondary);
         }
         input[type="text"] {
             width: 100%;
-            padding: 10px;
+            padding: 14px;
             margin-bottom: 18px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            font-size: 1em;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            font-size: 1.08em;
+            background: #f8fbff;
+            color: var(--text);
+            transition: border 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(79,140,255,0.06);
+        }
+        input[type="text"]:focus {
+            border: 1.5px solid var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px #4f8cff33;
         }
         .drop-area {
-            border: 2px dashed #667eea;
-            border-radius: 10px;
-            padding: 30px;
+            border: 2.5px dashed var(--primary);
+            border-radius: 14px;
+            padding: 38px 18px;
             text-align: center;
-            background: #f9f9f9;
+            background: #f1f5ff;
             cursor: pointer;
             margin-bottom: 18px;
-            transition: background 0.2s;
+            transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+            font-size: 1.13em;
+            position: relative;
+            color: var(--text-secondary);
+            box-shadow: 0 2px 12px rgba(79,140,255,0.04);
         }
         .drop-area.active {
-            background: #e0e7ff;
+            background: #e9f0ff;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 2px #7f56d955;
         }
         button {
-            margin: 10px 5px 0 0;
-            padding: 10px 24px;
-            border-radius: 6px;
+            margin: 12px 10px 0 0;
+            padding: 13px 32px;
+            border-radius: 10px;
             border: none;
-            background: #667eea;
-            color: white;
-            font-weight: bold;
+            background: var(--hero-gradient-text);
+            color: #fff;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 1.08em;
+            box-shadow: 0 2px 16px 0 #4f8cff33, 0 2px 8px rgba(16,16,32,0.10);
+            transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
+            letter-spacing: 0.5px;
         }
         button:disabled {
-            background: #ccc;
+            background: #e5e7eb;
+            color: #b6c2d6;
             cursor: not-allowed;
+            box-shadow: none;
         }
         button:hover:not(:disabled) {
-            background: #764ba2;
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 4px 24px 0 #7f56d955;
         }
         #status {
             margin-top: 18px;
             font-size: 1.1em;
+            color: var(--primary);
         }
         .loader {
             display: inline-block;
             width: 22px;
             height: 22px;
-            border: 3px solid #667eea;
+            border: 3px solid var(--primary);
             border-top: 3px solid #fff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -78,200 +285,758 @@
             0% { transform: rotate(0deg);}
             100% { transform: rotate(360deg);}
         }
-        .result-item {
-            background: #f9f9f9;
+        .result-item, .file-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px 20px 16px 20px;
+            margin-bottom: 20px;
+            border: 1.5px solid var(--border);
+            box-shadow: 0 2px 16px 0 #4f8cff11, 0 2px 8px rgba(16,16,32,0.06);
+            display: flex;
+            align-items: flex-start;
+            gap: 18px;
+        }
+        .file-card-icon {
+            width: 44px;
+            height: 44px;
             border-radius: 10px;
-            padding: 18px;
-            margin-bottom: 18px;
-            border: 2px solid #ddd;
+            background: linear-gradient(135deg, #7f56d9 0%, #4f8cff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.7em;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px 0 #4f8cff33;
+        }
+        .file-card-content {
+            flex: 1;
         }
         .pass {
-            color: green;
+            color: var(--success);
             font-size: 1.5em;
             font-weight: bold;
+            text-shadow: 0 2px 8px #22d3ee33;
         }
         .fail {
-            color: red;
+            color: var(--error);
             font-size: 1.5em;
             font-weight: bold;
+            text-shadow: 0 2px 8px #f43f5e33;
         }
         details {
             margin-top: 10px;
         }
         pre {
-            background: #eee;
+            background: #f1f5ff;
             padding: 10px;
-            border-radius: 6px;
-            font-size: 0.95em;
+            border-radius: 8px;
+            font-size: 0.97em;
             max-height: 200px;
             overflow: auto;
+            color: var(--text-secondary);
+        }
+        .footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1em;
+            margin-top: 18px;
+            padding-bottom: 18px;
+            opacity: 0.85;
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+        @media (max-width: 800px) {
+            .container {
+                padding: 18px 4vw 18px 4vw;
+            }
+        }
+        @media (max-width: 700px) {
+            .hero-title { font-size: 2em; }
+            .hero-bg { padding-top: 32px; }
+            .hero-stats { gap: 18px; }
+        }
+        @media (max-width: 600px) {
+            .container {
+                max-width: 98vw;
+                padding: 10px 2vw 10px 2vw;
+            }
+            .header {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .result-item, .file-card {
+                flex-direction: column;
+                gap: 8px;
+            }
         }
     </style>
-    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
 </head>
 <body>
-    <div class="container">
-        <h1>AI Document Verification</h1>
-        <form id="verifyForm">
-            <label for="userName">Enter Application Name:</label>
-            <input type="text" id="userName" name="userName" required>
-            <div id="dropArea" class="drop-area">
-                <p>Drag & drop documents here or click to select files</p>
-                <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">
+    <div class="floating-navbar">
+        <div class="navbar-content">
+            <div class="navbar-logo">
+                <svg width="24" height="24" fill="none"><circle cx="12" cy="12" r="10" fill="#4f8cff"/><path d="M12 7a2 2 0 0 1 2 2v1.5M8 11v-2a4 4 0 1 1 8 0v2m-8 0h8m-8 0v4.5a4 4 0 0 0 8 0V11" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span><b>DocVerify</b></span>
             </div>
-            <div id="fileList"></div>
-            <button type="submit" id="submitBtn" disabled>Verify Documents</button>
-        </form>
-        <div id="status"></div>
-        <div id="results"></div>
-        <script>
-        const dropArea = document.getElementById('dropArea');
-        const fileInput = document.getElementById('fileInput');
-        const verifyForm = document.getElementById('verifyForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const statusDiv = document.getElementById('status');
-        const resultsDiv = document.getElementById('results');
-        const fileListDiv = document.getElementById('fileList');
-        let files = [];
-        let fileStates = [];
-
-        dropArea.onclick = () => fileInput.click();
-        dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('active'); };
-        dropArea.ondragleave = e => { e.preventDefault(); dropArea.classList.remove('active'); };
-        dropArea.ondrop = e => {
-            e.preventDefault();
-            dropArea.classList.remove('active');
-            handleFiles(e.dataTransfer.files);
-        };
-        fileInput.onchange = e => handleFiles(e.target.files);
-
-        function handleFiles(fileList) {
-            for (let file of fileList) {
-                if (!files.some(f => f.name === file.name && f.size === file.size)) {
-                    files.push(file);
-                }
-            }
-            fileStates = files.map(f => ({
-                file: f,
-                predictedType: '',
-                confirmedType: '',
-                confirmed: false
-            }));
-            classifyAllFiles();
-        }
-
-        async function classifyAllFiles() {
-            fileListDiv.innerHTML = '';
-            for (let i = 0; i < fileStates.length; i++) {
-                const fd = new FormData();
-                fd.append('file', fileStates[i].file);
-                fileListDiv.innerHTML += `<div class="result-item" id="fileItem${i}">
-                    <h3>${fileStates[i].file.name}</h3>
-                    <p>Classifying...</p>
-                </div>`;
-                const res = await fetch('/classify_document', { method: 'POST', body: fd });
-                const data = await res.json();
-                fileStates[i].predictedType = data.document_type || 'Unknown';
-                fileStates[i].confirmedType = data.document_type || 'Unknown';
-                renderFileList();
-            }
-        }
-
-        function renderFileList() {
-            fileListDiv.innerHTML = '';
-            fileStates.forEach((f, idx) => {
-                let html = `<div class="result-item">
-                    <h3>${f.file.name}</h3>
-                    <p><b>Predicted Type:</b> ${f.predictedType}</p>
-                    <span style="display:${f.confirmed ? 'none':'inline'}">
-                        <label>Is this correct?</label>
-                        <button type="button" onclick="window.confirmType(${idx},true)">Yes</button>
-                        <button type="button" onclick="window.confirmType(${idx},false)">No</button>
-                    </span>
-                    <span id="manualType${idx}" style="display:none;">
-                        <select id="typeSelect${idx}">
-                            <option value="">Select type</option>
-                            {% for type in doc_types %}
-                            <option value="{{ type }}">{{ type }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" onclick="window.setManualType(${idx})">Confirm</button>
-                    </span>
-                    <span style="color:green;display:${f.confirmed ? 'inline':'none'}">
-                        Confirmed: <b>${f.confirmedType}</b>
-                    </span>
-                </div>`;
-                fileListDiv.innerHTML += html;
-            });
-            submitBtn.disabled = !fileStates.every(f => f.confirmed);
-        }
-        window.confirmType = function(idx, isYes) {
-            if (isYes) {
-                fileStates[idx].confirmed = true;
-                renderFileList();
-            } else {
-                document.getElementById('manualType'+idx).style.display = 'inline';
-            }
-        };
-        window.setManualType = function(idx) {
-            let sel = document.getElementById('typeSelect'+idx);
-            if (sel.value) {
-                fileStates[idx].confirmedType = sel.value;
-                fileStates[idx].confirmed = true;
-                renderFileList();
-            }
-        };
-
-        verifyForm.onsubmit = async (e) => {
-            e.preventDefault();
-            if (files.length === 0) {
-                alert('Please select at least one document.');
-                return;
-            }
-            const userName = document.getElementById('userName').value.trim();
-            if (!userName) {
-                alert('Please enter the application name.');
-                return;
-            }
-            submitBtn.disabled = true;
-            statusDiv.innerHTML = '<span class="loader"></span> Processing...';
-            resultsDiv.innerHTML = '';
-            const formData = new FormData();
-            files.forEach(f => formData.append('files', f));
-            fileStates.forEach(f => formData.append('confirmed_types', f.confirmedType));
-            formData.append('user_name', userName);
-            const res = await fetch('/process_documents', { method: 'POST', body: formData });
-            const data = await res.json();
-            submitBtn.disabled = false;
-            statusDiv.innerHTML = '';
-            if (data.results) {
-                let html = '';
-                data.results.forEach(r => {
-                    html += `<div class="result-item">
-                        <h3>${r.filename}</h3>
-                        <p><b>Document Type:</b> ${r.doc_type} ${r.confidence !== null ? '(Confidence: ' + r.confidence + ')' : ''}</p>
-                        <p><b>Extracted Name:</b> ${r.extracted_name || '<i>Not found</i>'}</p>
-                        <p><b>Application Name:</b> ${r.user_name}</p>
-                        <p><b>Match Score:</b> ${r.match_score}% 
-                            <span class="${r.match_result === 'pass' ? 'pass' : 'fail'}">
-                                ${r.match_result === 'pass' ? '&#10004;' : '&#10008;'}
-                            </span>
-                        </p>
-                        ${r.fields && Object.keys(r.fields).length > 0 ? `<details><summary>Show extracted fields</summary><pre>${Object.entries(r.fields).map(([k,v]) => k+': '+v).join('\n')}</pre></details>` : ''}
-                        <details><summary>Show raw OCR text</summary><pre>${r.raw_text}</pre></details>
-                        ${r.annotated_image ? `<details><summary>Show annotated image</summary><img src="data:image/jpeg;base64,${r.annotated_image}" style="max-width:100%;border-radius:8px;margin-top:10px;" /></details>` : ''}
-                    </div>`;
-                });
-                resultsDiv.innerHTML = html;
-            } else {
-                resultsDiv.innerHTML = `<p style="color:red;">${data.error || 'Verification failed.'}</p>`;
-            }
-            files = [];
-            fileStates = [];
-            dropArea.innerHTML = `<p>Drag & drop documents here or click to select files</p><input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">`;
-            fileListDiv.innerHTML = '';
-        };
-        </script>
+            <nav class="navbar-links">
+                <a href="#">Features</a>
+                <a href="#">Security</a>
+                <a href="#">About</a>
+            </nav>
+            <a href="#" class="navbar-btn">Get Started</a>
+        </div>
     </div>
+    <div class="hero-bg section-spacing">
+        <div class="animated-blobs-bg">
+          <div class="blob blob1"></div>
+          <div class="blob blob2"></div>
+          <div class="blob blob3"></div>
+        </div>
+        <span class="hero-badge">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#047857" stroke-width="2" fill="#d1fae5"/><path d="M9 12l2 2 4-4" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Government Certified Verification
+        </span>
+        <div class="hero-title">
+            Secure Document <span class="gradient">Verification</span>
+        </div>
+        <div class="hero-desc">
+            Upload your government documents for instant cross-verification. Our advanced AI technology ensures authenticity while maintaining the highest security standards.
+        </div>
+        <div class="hero-actions">
+            <button class="hero-btn-primary" onclick="document.getElementById('verifyForm').scrollIntoView({behavior:'smooth'})">Start Verification</button>
+            <button class="hero-btn-secondary">Learn More</button>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-icon">✅</span>
+                <span class="hero-stat-value">99.9%</span>
+                <span class="hero-stat-label">Accuracy Rate</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-icon">⏱️</span>
+                <span class="hero-stat-value">&lt;30s</span>
+                <span class="hero-stat-label">Processing Time</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-icon">👥</span>
+                <span class="hero-stat-value">1M+</span>
+                <span class="hero-stat-label">Documents Verified</span>
+            </div>
+        </div>
+    </div>
+    <div style="background-color: #f8fbff; padding-bottom: 68px;">
+        <div class="header section-spacing">
+            <span class="header-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm3 3h6v2H9V9zm0 4h4v2H9v-2z" fill="currentColor" />
+                </svg>
+            </span>
+            <h1>AI Document Verification</h1>
+        </div>
+        <div class="container section-spacing">
+            <form id="verifyForm" autocomplete="off">
+                <label for="userName">Enter Application Name:</label>
+                <input type="text" id="userName" name="userName" required placeholder="e.g. John Doe">
+                <div id="dropArea" class="drop-area" tabindex="0" aria-label="Drop files here or click to select">
+                    <p><b>Drag & drop documents here or click to select files</b></p>
+                    <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">
+                </div>
+                <div id="fileList"></div>
+                <button type="submit" id="submitBtn" disabled>Verify Documents</button>
+            </form>
+            <div id="status"></div>
+            <div id="results"></div>
+            <script>
+                const dropArea = document.getElementById('dropArea');
+                const fileInput = document.getElementById('fileInput');
+                const verifyForm = document.getElementById('verifyForm');
+                const submitBtn = document.getElementById('submitBtn');
+                const statusDiv = document.getElementById('status');
+                const resultsDiv = document.getElementById('results');
+                const fileListDiv = document.getElementById('fileList');
+                let files = [];
+                let fileStates = [];
+
+                dropArea.onclick = () => fileInput.click();
+                dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('active'); };
+                dropArea.ondragleave = e => { e.preventDefault(); dropArea.classList.remove('active'); };
+                dropArea.ondrop = e => {
+                    e.preventDefault();
+                    dropArea.classList.remove('active');
+                    handleFiles(e.dataTransfer.files);
+                };
+                dropArea.onkeydown = e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        fileInput.click();
+                    }
+                };
+                fileInput.onchange = e => handleFiles(e.target.files);
+
+                function getFileIcon(fileName) {
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    if (["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"].includes(ext)) {
+                        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#38bdf8"/><path d="M7 17l3-4 2 3 3-4 4 5H7z" fill="#fff"/></svg>`;
+                    } else if (ext === "pdf") {
+                        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#f43f5e"/><text x="12" y="17" text-anchor="middle" font-size="10" fill="#fff">PDF</text></svg>`;
+                    } else {
+                        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#64748b"/><text x="12" y="17" text-anchor="middle" font-size="10" fill="#fff">DOC</text></svg>`;
+                    }
+                }
+
+                function handleFiles(fileList) {
+                    for (let file of fileList) {
+                        if (!files.some(f => f.name === file.name && f.size === file.size)) {
+                            files.push(file);
+                        }
+                    }
+                    fileStates = files.map(f => ({
+                        file: f,
+                        predictedType: '',
+                        confirmedType: '',
+                        confirmed: false
+                    }));
+                    classifyAllFiles();
+                }
+
+                async function classifyAllFiles() {
+                    fileListDiv.innerHTML = '';
+                    for (let i = 0; i < fileStates.length; i++) {
+                        const fd = new FormData();
+                        fd.append('file', fileStates[i].file);
+                        fileListDiv.innerHTML += `<div class="file-card" id="fileItem${i}">
+                            <div class="file-card-icon">${getFileIcon(fileStates[i].file.name)}</div>
+                            <div class="file-card-content"><h3>${fileStates[i].file.name}</h3><p>Classifying...</p></div>
+                        </div>`;
+                        const res = await fetch('/classify_document', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        fileStates[i].predictedType = data.document_type || 'Unknown';
+                        fileStates[i].confirmedType = data.document_type || 'Unknown';
+                        renderFileList();
+                    }
+                }
+
+                function renderFileList() {
+                    fileListDiv.innerHTML = '';
+                    fileStates.forEach((f, idx) => {
+                        let html = `<div class="file-card">
+                            <div class="file-card-icon">${getFileIcon(f.file.name)}</div>
+                            <div class="file-card-content">
+                                <h3>${f.file.name}</h3>
+                                <p><b>Predicted Type:</b> ${f.predictedType}</p>
+                                <span style="display:${f.confirmed ? 'none' : 'inline'}">
+                                    <label>Is this correct?</label>
+                                    <button type="button" onclick="window.confirmType(${idx},true)">Yes</button>
+                                    <button type="button" onclick="window.confirmType(${idx},false)">No</button>
+                                </span>
+                                <span id="manualType${idx}" style="display:none;">
+                                    <select id="typeSelect${idx}">
+                                        <option value="">Select type</option>
+                                        {% for type in doc_types %}
+                                        <option value="{{ type }}">{{ type }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" onclick="window.setManualType(${idx})">Confirm</button>
+                                </span>
+                                <span style="color:var(--success);display:${f.confirmed ? 'inline' : 'none'}">
+                                    Confirmed: <b>${f.confirmedType}</b>
+                                </span>
+                            </div>
+                        </div>`;
+                        fileListDiv.innerHTML += html;
+                    });
+                    submitBtn.disabled = !fileStates.every(f => f.confirmed);
+                }
+                window.confirmType = function (idx, isYes) {
+                    if (isYes) {
+                        fileStates[idx].confirmed = true;
+                        renderFileList();
+                    } else {
+                        document.getElementById('manualType' + idx).style.display = 'inline';
+                    }
+                };
+                window.setManualType = function (idx) {
+                    let sel = document.getElementById('typeSelect' + idx);
+                    if (sel.value) {
+                        fileStates[idx].confirmedType = sel.value;
+                        fileStates[idx].confirmed = true;
+                        renderFileList();
+                    }
+                };
+
+                verifyForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    if (files.length === 0) {
+                        alert('Please select at least one document.');
+                        return;
+                    }
+                    const userName = document.getElementById('userName').value.trim();
+                    if (!userName) {
+                        alert('Please enter the application name.');
+                        return;
+                    }
+                    submitBtn.disabled = true;
+                    statusDiv.innerHTML = '<span class="loader"></span> Processing...';
+                    resultsDiv.innerHTML = '';
+                    const formData = new FormData();
+                    files.forEach(f => formData.append('files', f));
+                    fileStates.forEach(f => formData.append('confirmed_types', f.confirmedType));
+                    formData.append('user_name', userName);
+                    const res = await fetch('/process_documents', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    submitBtn.disabled = false;
+                    statusDiv.innerHTML = '';
+                    if (data.results) {
+                        let html = '';
+                        data.results.forEach(r => {
+                            html += `<div class="result-item">
+                                <div class="file-card-icon">${getFileIcon(r.filename)}</div>
+                                <div class="file-card-content">
+                                <h3>${r.filename}</h3>
+                                <p><b>Document Type:</b> ${r.doc_type} ${r.confidence !== null ? '(Confidence: ' + r.confidence + ')' : ''}</p>
+                                <p><b>Extracted Name:</b> ${r.extracted_name || '<i>Not found</i>'}</p>
+                                <p><b>Application Name:</b> ${r.user_name}</p>
+                                <p><b>Match Score:</b> ${r.match_score}% 
+                                    <span class="${r.match_result === 'pass' ? 'pass' : 'fail'}">
+                                        ${r.match_result === 'pass' ? '&#10004;' : '&#10008;'}
+                                    </span>
+                                </p>
+                                ${r.fields && Object.keys(r.fields).length > 0 ? `<details><summary>Show extracted fields</summary><pre>${Object.entries(r.fields).map(([k, v]) => k + ': ' + v).join('\n')}</pre></details>` : ''}
+                                <details><summary>Show raw OCR text</summary><pre>${r.raw_text}</pre></details>
+                                ${r.annotated_image ? `<details><summary>Show annotated image</summary><img src="data:image/jpeg;base64,${r.annotated_image}" style="max-width:100%;border-radius:8px;margin-top:10px;" /></details>` : ''}
+                                </div>
+                            </div>`;
+                        });
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = `<p style="color:var(--error);">${data.error || 'Verification failed.'}</p>`;
+                    }
+                    files = [];
+                    fileStates = [];
+                    dropArea.innerHTML = `<p><b>Drag & drop documents here or click to select files</b></p><input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none;">`;
+                    fileListDiv.innerHTML = '';
+                };
+            </script>
+        </div>
+    </div>
+    
+    <section class="why-choose-section section-spacing">
+        <div class="why-choose-header">
+            <div class="why-choose-badge">
+                <svg width="18" height="18" fill="none" style="vertical-align:middle;margin-right:6px;"><circle cx="9" cy="9" r="8" stroke="#4f8cff" stroke-width="1.5"/><path d="M9 4.5l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4L9 4.5z" stroke="#4f8cff" stroke-width="1.1"/></svg>
+                Premium Features
+            </div>
+            <h2 class="why-choose-title-main">
+                Why Choose Our <span class="gradient">Verification Platform?</span>
+            </h2>
+            <p class="why-choose-desc-main">Built with cutting-edge technology and designed for maximum security, our platform ensures your documents are verified with precision and care.</p>
+        </div>
+        <div class="why-choose-grid">
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#f1f5ff;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#e0e7ff"/><path d="M14 8a2 2 0 0 1 2 2v1.5M10 12v-2a4 4 0 1 1 8 0v2m-8 0h8m-8 0v4.5a4 4 0 0 0 8 0V12" stroke="#4f8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="why-choose-title">Advanced Security</div>
+                <div class="why-choose-desc">Bank-level encryption and secure processing ensure your documents are protected at all times.</div>
+            </div>
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#fef9c3;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#fef9c3"/><path d="M14 6v7l4 2" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="why-choose-title">Instant Verification</div>
+                <div class="why-choose-desc">AI-powered verification provides results in under 30 seconds with 99.9% accuracy.</div>
+            </div>
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#dcfce7;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#dcfce7"/><path d="M19 13v3a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2v-3" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" stroke="#22c55e" stroke-width="2"/></svg></div>
+                <div class="why-choose-title">Privacy First</div>
+                <div class="why-choose-desc">Documents are processed securely and automatically deleted after verification.</div>
+            </div>
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#f3e8ff;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#f3e8ff"/><ellipse cx="14" cy="14" rx="6" ry="4" stroke="#a78bfa" stroke-width="2"/><circle cx="14" cy="14" r="1.5" fill="#a78bfa"/></svg></div>
+                <div class="why-choose-title">Multiple Formats</div>
+                <div class="why-choose-desc">Support for PDFs, images, and various document formats from different agencies.</div>
+            </div>
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#eef2ff;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#eef2ff"/><path d="M14 8v6l4 2" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="why-choose-title">24/7 Availability</div>
+                <div class="why-choose-desc">Verify documents anytime, anywhere with our always-available verification system.</div>
+            </div>
+            <div class="why-choose-card">
+                <div class="why-choose-icon" style="background:#ffe4e6;"><svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#ffe4e6"/><path d="M14 8v8" stroke="#f43f5e" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="18" r="1" fill="#f43f5e"/></svg></div>
+                <div class="why-choose-title">Certified Process</div>
+                <div class="why-choose-desc">Government-approved verification process with official compliance certification.</div>
+            </div>
+        </div>
+    </section>
+    <style>
+    .why-choose-section {
+        max-width: 1200px;
+        margin: 0 auto 48px auto;
+        padding: 60px 16px;
+    }
+    .why-choose-header {
+        text-align: center;
+        margin-bottom: 36px;
+    }
+    .why-choose-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5ff;
+        color: #4f8cff;
+        font-weight: 500;
+        font-size: 1.08em;
+        border-radius: 999px;
+        padding: 7px 18px 7px 14px;
+        margin-bottom: 18px;
+        box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+        border: 1px solid #e0e7ef;
+    }
+    .why-choose-title-main {
+        font-size: 2.8em;
+        font-weight: 800;
+        color: #181e29;
+        margin-bottom: 10px;
+        letter-spacing: -0.02em;
+    }
+    .why-choose-title-main .gradient {
+        background: linear-gradient(90deg, #4f8cff 0%, #7f56d9 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .why-choose-desc-main {
+        color: #475569;
+        font-size: 1.18em;
+        max-width: 700px;
+        margin: 0 auto;
+        font-weight: 400;
+    }
+    .why-choose-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+        gap: 24px;
+    }
+    .why-choose-card {
+        background: #fff;
+        border: 1.5px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 2px 12px 0 #4f8cff11;
+        padding: 28px 22px 22px 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-height: 180px;
+        transition: box-shadow 0.18s, border 0.18s;
+    }
+    .why-choose-card:hover {
+        box-shadow: 0 4px 24px 0 #7f56d933;
+        border: 1.5px solid var(--primary);
+    }
+    .why-choose-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+    }
+    .why-choose-title {
+        font-size: 1.18em;
+        font-weight: 700;
+        color: var(--hero-head);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .why-choose-desc {
+        color: var(--text-secondary);
+        font-size: 1.05em;
+        font-weight: 400;
+    }
+    @media (max-width: 900px) {
+        .why-choose-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 600px) {
+        .why-choose-grid {
+            grid-template-columns: 1fr;
+        }
+        .why-choose-section {
+            padding: 0 4vw;
+        }
+    }
+    </style>
+    <div class="footer-dark">
+        <div class="footer-content">
+            <div class="footer-col about">
+                <div class="footer-logo">
+                    <span class="footer-logo-icon">
+                        <svg width="28" height="28" fill="none"><circle cx="14" cy="14" r="12" fill="#2563eb"/><path d="M14 9a2 2 0 0 1 2 2v1.5M10 13v-2a4 4 0 1 1 8 0v2m-8 0h8m-8 0v4.5a4 4 0 0 0 8 0V13" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="footer-logo-text"><b>DocVerify</b></span>
+                </div>
+                <div class="footer-desc">Secure, fast, and reliable government document verification platform. Trusted by millions of users worldwide.</div>
+                <div class="footer-contact">
+                    <div><span class="footer-contact-icon">✉️</span> support@docverify.gov</div>
+                    <div><span class="footer-contact-icon">📞</span> 1-800-DOC-VERIFY</div>
+                </div>
+            </div>
+            <div class="footer-col links">
+                <div class="footer-col-title">Quick Links</div>
+                <a href="#">How It Works</a>
+                <a href="#">Supported Documents</a>
+                <a href="#">Security</a>
+                <a href="#">API Documentation</a>
+            </div>
+            <div class="footer-col legal">
+                <div class="footer-col-title">Legal</div>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Compliance</a>
+                <a href="#">Data Protection</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2024 DocVerify. All rights reserved.</span>
+            <span class="footer-lang"><svg width="18" height="18" fill="none" style="vertical-align:middle;"><circle cx="9" cy="9" r="8" stroke="#64748b" stroke-width="1.5"/><path d="M2.5 9h13M9 2.5c1.5 2 1.5 10.9 0 13M9 2.5c-1.5 2-1.5 10.9 0 13" stroke="#64748b" stroke-width="1.2"/></svg> Available in 12 languages</span>
+        </div>
+    </div>
+    <style>
+    .footer-dark {
+        background: #181e29;
+        color: #e5e7eb;
+        padding: 0;
+        margin: 0;
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        letter-spacing: -0.01em;
+    }
+    .footer-content {
+        display: flex;
+        justify-content: space-between;
+        gap: 48px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 48px 24px 18px 24px;
+        flex-wrap: wrap;
+    }
+    .footer-col {
+        flex: 1 1 220px;
+        min-width: 200px;
+        margin-bottom: 18px;
+    }
+    .footer-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .footer-logo-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .footer-logo-text {
+        font-size: 1.25em;
+        color: #fff;
+        font-weight: 700;
+    }
+    .footer-desc {
+        font-size: 1em;
+        color: #cbd5e1;
+        margin-bottom: 18px;
+        line-height: 1.5;
+    }
+    .footer-contact {
+        font-size: 1em;
+        color: #cbd5e1;
+        margin-bottom: 8px;
+    }
+    .footer-contact-icon {
+        margin-right: 7px;
+    }
+    .footer-col-title {
+        font-size: 1.08em;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 12px;
+    }
+    .footer-col a {
+        display: block;
+        color: #cbd5e1;
+        text-decoration: none;
+        margin-bottom: 8px;
+        font-size: 1em;
+        transition: color 0.15s;
+    }
+    .footer-col a:hover {
+        color: #4f8cff;
+    }
+    .footer-bottom {
+        border-top: 1px solid #232a37;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px 12px 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+        font-size: 1em;
+        color: #94a3b8;
+    }
+    .footer-lang {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 1em;
+    }
+    @media (max-width: 900px) {
+        .footer-content {
+            flex-direction: column;
+            gap: 18px;
+        }
+        .footer-bottom {
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+    }
+    </style>
+    <style>
+    .section-spacing {
+       
+    }
+    @media (max-width: 600px) {
+        .section-spacing {
+            margin-top: 28px;
+            margin-bottom: 28px;
+        }
+    }
+    </style>
+    <style>
+    .floating-navbar {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        border-radius: 999px;
+        box-shadow: 0 4px 24px 0 #4f8cff22, 0 1.5px 8px #7f56d922;
+        padding: 0 18px;
+        z-index: 1000;
+        min-width: 340px;
+        max-width: 90vw;
+        width: fit-content;
+        display: flex;
+        align-items: center;
+        border: 1.5px solid #e5e7eb;
+    }
+    .navbar-content {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        height: 56px;
+    }
+    .navbar-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.18em;
+        color: #1e293b;
+        font-weight: 700;
+        margin-right: 8px;
+    }
+    .navbar-links {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 1.05em;
+    }
+    .navbar-links a {
+        color: #1e293b;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.15s;
+        margin-left: 2px;
+    }
+    .navbar-links a:hover {
+        color: #4f8cff;
+    }
+    .navbar-btn {
+        background: linear-gradient(90deg, #4f8cff 0%, #7f56d9 100%);
+        color: #fff;
+        font-weight: 600;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 28px;
+        margin-left: 8px;
+        text-decoration: none;
+        font-size: 1.05em;
+        min-width: 90px;
+        box-shadow: 0 2px 8px 0 #4f8cff33;
+        transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
+    }
+    .navbar-btn:hover {
+        transform: translateY(-2px) scale(1.04);
+        box-shadow: 0 4px 24px 0 #7f56d955;
+    }
+    @media (max-width: 600px) {
+        .floating-navbar {
+            top: 8px;
+            padding: 0 6px;
+        }
+        .navbar-content {
+            gap: 8px;
+            height: 44px;
+        }
+        .navbar-btn {
+            padding: 7px 14px;
+            font-size: 0.98em;
+        }
+    }
+    </style>
+    <style>
+    .animated-blobs-bg {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+    }
+    /* Ensure blob animation is present and not overridden */
+    .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(60px);
+        opacity: 0.55;
+        animation: blobMove 18s ease-in-out infinite alternate;
+        mix-blend-mode: lighten;
+        will-change: transform;
+    }
+    .blob1 {
+        width: 520px; height: 520px;
+        background: radial-gradient(circle at 30% 30%, #4f8cff 0%, #7f56d9 100%);
+        top: -120px; left: -120px;
+        animation-delay: 0s;
+    }
+    .blob2 {
+        width: 420px; height: 420px;
+        background: radial-gradient(circle at 70% 70%, #38bdf8 0%, #f1f5ff 100%);
+        top: 40vh; left: 60vw;
+        animation-delay: 4s;
+    }
+    .blob3 {
+        width: 340px; height: 340px;
+        background: radial-gradient(circle at 50% 50%, #a78bfa 0%, #f8fbff 100%);
+        top: 60vh; left: -120px;
+        animation-delay: 8s;
+    }
+    @keyframes blobMove {
+        0%   { transform: scale(1) translate(0, 0);}
+        33%  { transform: scale(1.12) translate(40px, -30px);}
+        66%  { transform: scale(0.95) translate(-30px, 40px);}
+        100% { transform: scale(1.08) translate(20px, -20px);}
+    }
+    </style>
 </body>
 </html>
