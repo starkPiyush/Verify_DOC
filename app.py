@@ -9,6 +9,25 @@ import numpy as np
 import pytesseract
 from rapidfuzz import fuzz, process as rapid_process
 import base64
+import json
+from hashlib import sha256
+
+API_KEYS_FILE = 'api_keys.json'
+
+def load_api_keys():
+    if not os.path.exists(API_KEYS_FILE):
+        return {}
+    with open(API_KEYS_FILE, 'r') as f:
+        return json.load(f)
+
+def save_api_keys(keys):
+    with open(API_KEYS_FILE, 'w') as f:
+        json.dump(keys, f, indent=2)
+
+def generate_api_key(email):
+    raw = f"{email}-{uuid.uuid4()}"
+    return sha256(raw.encode()).hexdigest()
+
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -338,6 +357,25 @@ def process_documents_api():
         return jsonify({"results": results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/generate_api_key', methods=['POST'])
+def generate_key():
+    data = request.get_json()
+    email = data.get("email")
+    company = data.get("company", "Unknown")
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    api_keys = load_api_keys()
+    if email in api_keys:
+        return jsonify({"api_key": api_keys[email]["key"], "message": "Key already exists"})
+
+    api_key = generate_api_key(email)
+    api_keys[email] = {"key": api_key, "company": company}
+    save_api_keys(api_keys)
+
+    return jsonify({"api_key": api_key})
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
