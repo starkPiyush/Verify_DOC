@@ -3,6 +3,6 @@ pillow
 pdf2image
 opencv-python
 numpy
-pytesseract
+pytesseract 
 rapidfuzz
 ultralytics
