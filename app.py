@@ -11,25 +11,35 @@ from rapidfuzz import fuzz, process as rapid_process
 import base64
 import json
 from hashlib import sha256
+from flask_cors import CORS
+from pymongo import MongoClient
+from datetime import datetime
 
-API_KEYS_FILE = 'api_keys.json'
+# API_KEYS_FILE = 'api_keys.json'
 
-def load_api_keys():
-    if not os.path.exists(API_KEYS_FILE):
-        return {}
-    with open(API_KEYS_FILE, 'r') as f:
-        return json.load(f)
+# def load_api_keys():
+#     if not os.path.exists(API_KEYS_FILE):
+#         return {}
+#     with open(API_KEYS_FILE, 'r') as f:
+#         return json.load(f)
 
-def save_api_keys(keys):
-    with open(API_KEYS_FILE, 'w') as f:
-        json.dump(keys, f, indent=2)
+# def save_api_keys(keys):
+#     with open(API_KEYS_FILE, 'w') as f:
+#         json.dump(keys, f, indent=2)
 
 def generate_api_key(email):
     raw = f"{email}-{uuid.uuid4()}"
     return sha256(raw.encode()).hexdigest()
 
 
+# MongoDB setup
+client = MongoClient("mongodb://localhost:27017/")  # or MongoDB Atlas URI
+db = client["doc_verifier"]
+api_keys_collection = db["api_keys"]
+
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
+CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -323,24 +333,42 @@ def classify_document_api():
 @app.route('/process_documents', methods=['POST'])
 def process_documents_api():
     try:
+        # Determine where request is coming from (Referer or Origin)
+        referer = request.headers.get("Referer", "") or request.headers.get("Origin", "")
+        require_api_key = "enterprise" in referer.lower()
+
+        # If enterprise.html is being used, enforce API Key validation
+        if require_api_key:
+            api_key = request.headers.get("X-API-Key")
+            if not api_key:
+                return jsonify({'error': 'Missing API key'}), 403
+            key_entry = api_keys_collection.find_one({"key": api_key})
+            if not key_entry:
+                return jsonify({'error': 'Invalid API key'}), 403
+        else:
+            print("[PUBLIC DEMO] Request from index.html or external client. No API key required.")
+
+        # Process uploaded documents
         files = request.files.getlist('files')
         user_name = request.form.get('user_name', '').strip()
         confirmed_types = request.form.getlist('confirmed_types')
         results = []
+
         for idx, file in enumerate(files):
             file_id = str(uuid.uuid4())
             file_extension = file.filename.split('.')[-1].lower()
             file_path = os.path.join(UPLOAD_FOLDER, f"{file_id}.{file_extension}")
             file.save(file_path)
+
             doc_type = confirmed_types[idx] if idx < len(confirmed_types) and confirmed_types[idx] else None
-            if not doc_type:
-                doc_type, confidence = classify_document(file_path)
-            else:
-                confidence = None
+            confidence = None if doc_type else classify_document(file_path)[1]
+            doc_type = doc_type or classify_document(file_path)[0]
+
             doc_info = process_document(file_path, doc_type)
             extracted_name = doc_info["extracted_name"]
             match_score = fuzzy_match_name(extracted_name, user_name)
             match_result = "pass" if match_score >= 80 else "fail"
+
             results.append({
                 "filename": file.filename,
                 "doc_type": doc_type,
@@ -353,10 +381,14 @@ def process_documents_api():
                 "fields": doc_info.get("fields", {}),
                 "annotated_image": doc_info.get("annotated_image", None)
             })
+
             os.remove(file_path)
+
         return jsonify({"results": results})
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
     
 @app.route('/generate_api_key', methods=['POST'])
 def generate_key():
@@ -367,15 +399,24 @@ def generate_key():
     if not email:
         return jsonify({"error": "Email is required"}), 400
 
-    api_keys = load_api_keys()
-    if email in api_keys:
-        return jsonify({"api_key": api_keys[email]["key"], "message": "Key already exists"})
+    # Check if key already exists
+    existing = api_keys_collection.find_one({"email": email})
+    if existing:
+        return jsonify({
+            "api_key": existing["key"],
+            "message": "Key already exists"
+        })
 
-    api_key = generate_api_key(email)
-    api_keys[email] = {"key": api_key, "company": company}
-    save_api_keys(api_keys)
+    new_key = generate_api_key(email)
+    api_keys_collection.insert_one({
+        "email": email,
+        "company": company,
+        "key": new_key,
+        "created_at": datetime.utcnow()
+    })
 
-    return jsonify({"api_key": api_key})
+    return jsonify({"api_key": new_key})
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)

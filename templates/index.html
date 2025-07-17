@@ -375,6 +375,7 @@
     </style>
 </head>
 <body>
+    
     <div class="floating-navbar">
         <div class="navbar-content">
             <div class="navbar-logo">
@@ -427,6 +428,32 @@
             </div>
         </div>
     </div>
+    <div class="container">
+    <h3>Generate API Key</h3>
+    <label for="apiEmail">Email:</label>
+    <input type="text" id="apiEmail" placeholder="e.g. team@company.com">
+    <label for="apiCompany">Company:</label>
+    <input type="text" id="apiCompany" placeholder="e.g. DocVerify Ltd">
+    <button onclick="generateLocalApiKey()">Generate API Key</button>
+    <p><b>API Key:</b> <span id="localApiKeyDisplay" style="word-break: break-all;"></span></p>
+    </div>
+
+    <script>
+    async function generateLocalApiKey() {
+        const email = document.getElementById("apiEmail").value.trim();
+        const company = document.getElementById("apiCompany").value.trim();
+
+        const res = await fetch("/generate_api_key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, company })
+        });
+
+        const data = await res.json();
+        document.getElementById("localApiKeyDisplay").innerText = data.api_key;
+    }
+    </script>
+
     <div style="background-color: #f8fbff; padding-bottom: 68px;">
         <div class="header section-spacing">
             <span class="header-icon">
@@ -448,6 +475,8 @@
                 <button type="submit" id="submitBtn" disabled>Verify Documents</button>
             </form>
             <div id="status"></div>
+            <div id="fieldInputArea"></div> <!-- Dynamic user field input area -->
+            <pre id="resultBox"></pre>
             <div id="results"></div>
             <script>
                 const dropArea = document.getElementById('dropArea');
@@ -459,6 +488,45 @@
                 const fileListDiv = document.getElementById('fileList');
                 let files = [];
                 let fileStates = [];
+                
+                async function fetchDocumentFields(idx, docType) {
+                    const res = await fetch(`/document_fields/${encodeURIComponent(docType)}`);
+                    const data = await res.json();
+                    if (data.fields && Array.isArray(data.fields)) {
+                        fileStates[idx].requiredFields = data.fields;
+                        renderFieldInputs();  // update UI
+                    }
+                }
+
+                function renderFieldInputs() {
+                    const fieldInputArea = document.getElementById("fieldInputArea");
+                    fieldInputArea.innerHTML = '';
+
+                    fileStates.forEach((f, idx) => {
+                        if (!f.requiredFields) return;
+
+                        const section = document.createElement("div");
+                        section.innerHTML = `<h4>${f.file.name} (${f.confirmedType})</h4>`;
+                        f.requiredFields.forEach(field => {
+                            const inputId = `field_${idx}_${field}`;
+                            const label = document.createElement("label");
+                            label.setAttribute("for", inputId);
+                            label.innerText = field + ":";
+
+                            const input = document.createElement("input");
+                            input.type = "text";
+                            input.id = inputId;
+                            input.name = inputId;
+                            input.placeholder = `Enter ${field}`;
+
+                            section.appendChild(label);
+                            section.appendChild(input);
+                        });
+
+                        section.style.marginBottom = "28px";
+                        fieldInputArea.appendChild(section);
+                    });
+                }
 
                 dropArea.onclick = () => fileInput.click();
                 dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('active'); };
@@ -551,8 +619,10 @@
                 }
                 window.confirmType = function (idx, isYes) {
                     if (isYes) {
+                        fileStates[idx].confirmedType = fileStates[idx].predictedType;
                         fileStates[idx].confirmed = true;
                         renderFileList();
+                        fetchDocumentFields(idx, fileStates[idx].confirmedType);
                     } else {
                         document.getElementById('manualType' + idx).style.display = 'inline';
                     }
@@ -563,6 +633,7 @@
                         fileStates[idx].confirmedType = sel.value;
                         fileStates[idx].confirmed = true;
                         renderFileList();
+                        fetchDocumentFields(idx, sel.value);
                     }
                 };
 
@@ -583,6 +654,15 @@
                     const formData = new FormData();
                     files.forEach(f => formData.append('files', f));
                     fileStates.forEach(f => formData.append('confirmed_types', f.confirmedType));
+                    fileStates.forEach((f, idx) => {
+                        if (f.requiredFields) {
+                            f.requiredFields.forEach(field => {
+                                const inputId = `field_${idx}_${field}`;
+                                const value = document.getElementById(inputId)?.value || '';
+                                formData.append(`fields_${idx}_${field}`, value);
+                            });
+                        }
+                    });
                     formData.append('user_name', userName);
                     const res = await fetch('/process_documents', { method: 'POST', body: formData });
                     const data = await res.json();
@@ -598,11 +678,15 @@
                                 <p><b>Document Type:</b> ${r.doc_type} ${r.confidence !== null ? '(Confidence: ' + r.confidence + ')' : ''}</p>
                                 <p><b>Extracted Name:</b> ${r.extracted_name || '<i>Not found</i>'}</p>
                                 <p><b>Application Name:</b> ${r.user_name}</p>
-                                <p><b>Match Score:</b> ${r.match_score}% 
-                                    <span class="${r.match_result === 'pass' ? 'pass' : 'fail'}">
-                                        ${r.match_result === 'pass' ? '&#10004;' : '&#10008;'}
-                                    </span>
-                                </p>
+                                ${r.match_scores ? Object.entries(r.match_scores).map(([field, score]) => `
+                                    <p><b>${field}:</b> 
+                                        <br/><b>Match Score:</b> ${score !== undefined ? score + '%' : 'N/A'}
+                                        <span class="${score >= 80 ? 'pass' : 'fail'}">
+                                            ${score >= 80 ? '&#10004;' : '&#10008;'}
+                                        </span>
+                                    </p>
+                                `).join('') : ''}
+
                                 ${r.fields && Object.keys(r.fields).length > 0 ? `<details><summary>Show extracted fields</summary><pre>${Object.entries(r.fields).map(([k, v]) => k + ': ' + v).join('\n')}</pre></details>` : ''}
                                 <details><summary>Show raw OCR text</summary><pre>${r.raw_text}</pre></details>
                                 ${r.annotated_image ? `<details><summary>Show annotated image</summary><img src="data:image/jpeg;base64,${r.annotated_image}" style="max-width:100%;border-radius:8px;margin-top:10px;" /></details>` : ''}
