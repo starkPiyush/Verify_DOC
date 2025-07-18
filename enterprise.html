@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enterprise Document Verifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: #232946;
+      --secondary: #eebbc3;
+      --accent: #b8c1ec;
+      --bg: #121629;
+      --card-bg: rgba(35, 41, 70, 0.92);
+      --glass: rgba(35, 41, 70, 0.75);
+      --success: #43d9ad;
+      --error: #f43f5e;
+      --text: #f4f4f4;
+      --text-secondary: #b8c1ec;
+      --border: #393e6e;
+      --shadow: 0 4px 32px 0 #23294644;
+    }
+    body {
+      background: linear-gradient(135deg, #121629 0%, #232946 100%);
+      color: var(--text);
+      font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 0;
+      letter-spacing: -0.01em;
+    }
+    .enterprise-container {
+      max-width: 900px;
+      margin: 48px auto 0 auto;
+      background: var(--glass);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 38px 32px 32px 32px;
+      border: 1.5px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    h2 {
+      color: var(--secondary);
+      font-size: 2.2em;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--accent);
+      font-size: 1.1em;
+      margin-bottom: 28px;
+    }
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 18px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #181e29;
+      color: var(--text);
+      font-size: 1.08em;
+      margin-bottom: 18px;
+      transition: border 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px #23294622;
+    }
+    input[type="text"]:focus, select:focus {
+      border: 1.5px solid var(--secondary);
+      outline: none;
+      box-shadow: 0 0 0 2px #eebbc344;
+    }
+    .file-drop {
+      border: 2.5px dashed var(--accent);
+      border-radius: 14px;
+      padding: 38px 18px;
+      text-align: center;
+      background: #181e29cc;
+      cursor: pointer;
+      margin-bottom: 18px;
+      color: var(--text-secondary);
+      font-size: 1.13em;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+      box-shadow: 0 2px 12px #23294622;
+    }
+    .file-drop.active {
+      background: #232946cc;
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 2px #eebbc344;
+    }
+    .file-list {
+      margin-bottom: 18px;
+    }
+    .file-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 18px 18px 12px 18px;
+      margin-bottom: 14px;
+      border: 1.5px solid var(--border);
+      box-shadow: 0 2px 12px #23294622;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+    .file-card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #eebbc3 0%, #b8c1ec 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #232946;
+      font-size: 1.5em;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px #eebbc344;
+    }
+    .file-card-content {
+      flex: 1;
+    }
+    .dynamic-fields-section {
+      background: #181e29cc;
+      border-radius: 12px;
+      padding: 18px 18px 8px 18px;
+      margin-bottom: 18px;
+      border: 1.5px solid var(--border);
+      box-shadow: 0 2px 8px #23294622;
+    }
+    .submit-btn {
+      margin-top: 18px;
+      padding: 15px 38px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(90deg, #eebbc3 0%, #b8c1ec 100%);
+      color: #232946;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 1.13em;
+      box-shadow: 0 2px 16px #eebbc344;
+      letter-spacing: 0.5px;
+      transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
+    }
+    .submit-btn:disabled {
+      background: #393e6e;
+      color: #b8c1ec;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .result-section {
+      margin-top: 32px;
+    }
+    .result-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 18px 18px 12px 18px;
+      margin-bottom: 18px;
+      border: 1.5px solid var(--border);
+      box-shadow: 0 2px 12px #23294622;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+    .result-card-content {
+      flex: 1;
+    }
+    .pass {
+      color: var(--success);
+      font-size: 1.3em;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .fail {
+      color: var(--error);
+      font-size: 1.3em;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .score-bar {
+      display: inline-block;
+      height: 10px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #43d9ad 0%, #b8c1ec 100%);
+      margin-left: 8px;
+      vertical-align: middle;
+      min-width: 40px;
+      max-width: 120px;
+    }
+    .score-label {
+      font-size: 0.98em;
+      color: var(--text-secondary);
+      margin-left: 8px;
+    }
+    .loader {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--accent);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
+    }
+    @media (max-width: 700px) {
+      .enterprise-container { padding: 12px 2vw 12px 2vw; }
+      h2 { font-size: 1.3em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="enterprise-container">
+    <h2>Enterprise Document Verification</h2>
+    <div class="subtitle">AI-powered, secure, and customizable verification for your business needs.</div>
+    <label for="apiKeyInput">API Key</label>
+    <input id="apiKeyInput" type="text" placeholder="Paste your API key here">
+    <label for="applicantName">Applicant Name</label>
+    <input id="applicantName" type="text" placeholder="e.g. Ravi Kumar">
+    <div id="fileDrop" class="file-drop" tabindex="0">
+      <b>Drag & drop documents here or click to select files</b>
+      <input type="file" id="docs" multiple style="display:none;">
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <div id="dynamicFields"></div>
+    <button class="submit-btn" id="submitBtn" disabled>Submit for Verification</button>
+    <div id="status"></div>
+    <div class="result-section" id="resultSection"></div>
+  </div>
+  <script>
+    const LAN_SERVER = "http://192.168.0.29:5000"; // replace if different
+    let files = [];
+    let fileStates = [];
+    let requiredFieldsMap = {}; // { idx: [fields] }
+
+    const fileDrop = document.getElementById('fileDrop');
+    const docsInput = document.getElementById('docs');
+    const fileListDiv = document.getElementById('fileList');
+    const dynamicFieldsDiv = document.getElementById('dynamicFields');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('status');
+    const resultSection = document.getElementById('resultSection');
+
+    // File drop logic
+    fileDrop.onclick = () => docsInput.click();
+    fileDrop.ondragover = e => { e.preventDefault(); fileDrop.classList.add('active'); };
+    fileDrop.ondragleave = e => { e.preventDefault(); fileDrop.classList.remove('active'); };
+    fileDrop.ondrop = e => {
+      e.preventDefault();
+      fileDrop.classList.remove('active');
+      handleFiles(e.dataTransfer.files);
+    };
+    fileDrop.onkeydown = e => {
+      if (e.key === 'Enter' || e.key === ' ') docsInput.click();
+    };
+    docsInput.onchange = e => handleFiles(e.target.files);
+
+    function getFileIcon(fileName) {
+      const ext = fileName.split('.').pop().toLowerCase();
+      if (["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"].includes(ext)) {
+        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#43d9ad"/><path d="M7 17l3-4 2 3 3-4 4 5H7z" fill="#fff"/></svg>`;
+      } else if (ext === "pdf") {
+        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#eebbc3"/><text x="12" y="17" text-anchor="middle" font-size="10" fill="#232946">PDF</text></svg>`;
+      } else {
+        return `<svg width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" fill="#b8c1ec"/><text x="12" y="17" text-anchor="middle" font-size="10" fill="#232946">DOC</text></svg>`;
+      }
+    }
+
+    function handleFiles(fileList) {
+      for (let file of fileList) {
+        if (!files.some(f => f.name === file.name && f.size === file.size)) {
+          files.push(file);
+        }
+      }
+      fileStates = files.map(f => ({
+        file: f,
+        predictedType: '',
+        confirmedType: '',
+        requiredFields: [],
+        fields: {}
+      }));
+      renderFileList();
+      classifyAllFiles();
+    }
+
+    function renderFileList() {
+      fileListDiv.innerHTML = '';
+      files.forEach((file, idx) => {
+        fileListDiv.innerHTML += `
+          <div class="file-card">
+            <div class="file-card-icon">${getFileIcon(file.name)}</div>
+            <div class="file-card-content">
+              <h4>${file.name}</h4>
+              <div id="fileType${idx}">Classifying...</div>
+              <div id="typeSelectDiv${idx}" style="display:none;">
+                <label>Document Type:</label>
+                <select id="typeSelect${idx}">
+                  <option value="">Select type</option>
+                  <option value="Aadhar Card">Aadhar Card</option>
+                  <option value="PAN Card">PAN Card</option>
+                  <option value="Handicap smart card">Handicap smart card</option>
+                  <option value="Birth Certificate">Birth Certificate</option>
+                  <option value="Bonafide Certificate">Bonafide Certificate</option>
+                  <option value="Caste certificate">Caste certificate</option>
+                  <option value="Current Month Salary Slip">Current Month Salary Slip</option>
+                  <option value="Passport and VISA">Passport and VISA</option>
+                  <option value="Marksheet">Marksheet</option>
+                  <option value="Transgender Certificate">Transgender Certificate</option>
+                </select>
+                <button type="button" onclick="window.confirmType(${idx})">Confirm</button>
+              </div>
+              <div id="confirmedType${idx}" style="color:var(--success);display:none;"></div>
+            </div>
+          </div>
+        `;
+      });
+      submitBtn.disabled = !fileStates.every(f => f.confirmedType);
+    }
+
+    async function classifyAllFiles() {
+      for (let i = 0; i < fileStates.length; i++) {
+        const fd = new FormData();
+        fd.append('file', fileStates[i].file);
+        try {
+          const res = await fetch(`${LAN_SERVER}/classify_document`, { method: 'POST', body: fd });
+          const data = await res.json();
+          fileStates[i].predictedType = data.document_type || 'Unknown';
+          document.getElementById(`fileType${i}`).innerHTML = `
+            <b>Predicted:</b> ${fileStates[i].predictedType}
+            <button type="button" onclick="window.acceptType(${i})">Accept</button>
+            <button type="button" onclick="window.showTypeSelect(${i})">Change</button>
+          `;
+        } catch (err) {
+          document.getElementById(`fileType${i}`).innerHTML = `<span style="color:var(--error);">Error classifying</span>`;
+        }
+      }
+    }
+
+    window.acceptType = function(idx) {
+      fileStates[idx].confirmedType = fileStates[idx].predictedType;
+      document.getElementById(`confirmedType${idx}`).style.display = 'block';
+      document.getElementById(`confirmedType${idx}`).innerText = `Confirmed: ${fileStates[idx].confirmedType}`;
+      document.getElementById(`fileType${idx}`).style.display = 'none';
+      document.getElementById(`typeSelectDiv${idx}`).style.display = 'none';
+      fetchRequiredFields(idx, fileStates[idx].confirmedType);
+      submitBtn.disabled = !fileStates.every(f => f.confirmedType);
+    };
+    window.showTypeSelect = function(idx) {
+      document.getElementById(`typeSelectDiv${idx}`).style.display = 'block';
+    };
+    window.confirmType = function(idx) {
+      const sel = document.getElementById(`typeSelect${idx}`);
+      if (sel.value) {
+        fileStates[idx].confirmedType = sel.value;
+        document.getElementById(`confirmedType${idx}`).style.display = 'block';
+        document.getElementById(`confirmedType${idx}`).innerText = `Confirmed: ${fileStates[idx].confirmedType}`;
+        document.getElementById(`fileType${idx}`).style.display = 'none';
+        document.getElementById(`typeSelectDiv${idx}`).style.display = 'none';
+        fetchRequiredFields(idx, sel.value);
+        submitBtn.disabled = !fileStates.every(f => f.confirmedType);
+      }
+    };
+
+    async function fetchRequiredFields(idx, docType) {
+      try {
+        const res = await fetch(`${LAN_SERVER}/document_fields/${encodeURIComponent(docType)}`);
+        const data = await res.json();
+        if (data.fields && Array.isArray(data.fields)) {
+          fileStates[idx].requiredFields = data.fields;
+          renderDynamicFields();
+        }
+      } catch (err) {
+        // fallback: no fields
+        fileStates[idx].requiredFields = [];
+        renderDynamicFields();
+      }
+    }
+
+    function renderDynamicFields() {
+      dynamicFieldsDiv.innerHTML = '';
+      fileStates.forEach((f, idx) => {
+        if (!f.requiredFields || !f.confirmedType) return;
+        const section = document.createElement("div");
+        section.className = "dynamic-fields-section";
+        section.innerHTML = `<h4>${f.file.name} <span class="score-label">(${f.confirmedType})</span></h4>`;
+        f.requiredFields.forEach(field => {
+          const inputId = `field_${idx}_${field}`;
+          const label = document.createElement("label");
+          label.setAttribute("for", inputId);
+          label.innerText = field + ":";
+          const input = document.createElement("input");
+          input.type = "text";
+          input.id = inputId;
+          input.name = inputId;
+          input.placeholder = `Enter ${field}`;
+          section.appendChild(label);
+          section.appendChild(input);
+        });
+        dynamicFieldsDiv.appendChild(section);
+      });
+      submitBtn.disabled = !fileStates.every(f => f.confirmedType);
+    }
+
+    submitBtn.onclick = async function() {
+      try {
+        const apiKey = document.getElementById("apiKeyInput").value.trim();
+        const name = document.getElementById("applicantName").value.trim();
+        if (!apiKey || files.length === 0 || !name || !fileStates.every(f => f.confirmedType)) {
+          alert("Please complete all fields and classification.");
+          return;
+        }
+        submitBtn.disabled = true;
+        statusDiv.innerHTML = '<span class="loader"></span> Processing...';
+        resultSection.innerHTML = '';
+        const formData = new FormData();
+        formData.append("user_name", name);
+        for (let file of files) formData.append("files", file);
+        for (let f of fileStates) formData.append("confirmed_types", f.confirmedType);
+        fileStates.forEach((f, idx) => {
+          if (f.requiredFields) {
+            f.requiredFields.forEach(field => {
+              const inputId = `field_${idx}_${field}`;
+              const value = document.getElementById(inputId)?.value || '';
+              formData.append(`fields_${idx}_${field}`, value);
+            });
+          }
+        });
+        const res = await fetch(`${LAN_SERVER}/process_documents`, {
+          method: "POST",
+          headers: { "X-API-Key": apiKey },
+          body: formData
+        });
+        const data = await res.json();
+        statusDiv.innerHTML = '';
+        submitBtn.disabled = false;
+        renderResults(data);
+      } catch (err) {
+        statusDiv.innerHTML = '';
+        submitBtn.disabled = false;
+        alert("Error processing documents. See console.");
+      }
+    };
+
+    function renderResults(data) {
+      resultSection.innerHTML = '';
+      if (!data.results) {
+        resultSection.innerHTML = `<div style="color:var(--error);">${data.error || 'Verification failed.'}</div>`;
+        return;
+      }
+      data.results.forEach(r => {
+        // Map YOLO Aadhar keys to field names for display
+        if (r.doc_type === "Aadhar Card") {
+          const aadharMap = {
+            "0": "aadhar_number",
+            "1": "dob",
+            "2": "gender",
+            "3": "name",
+            "4": "address"
+          };
+          if (r.fields) {
+            const newFields = {};
+            Object.entries(r.fields).forEach(([k, v]) => {
+              newFields[aadharMap[k] || k] = v;
+            });
+            r.fields = newFields;
+          }
+          if (r.match_scores) {
+            const newScores = {};
+            Object.entries(r.match_scores).forEach(([k, v]) => {
+              newScores[aadharMap[k] || k] = v;
+            });
+            r.match_scores = newScores;
+          }
+        }
+        let html = `
+          <div class="result-card">
+            <div class="file-card-icon">${getFileIcon(r.filename)}</div>
+            <div class="result-card-content">
+              <h4>${r.filename}</h4>
+              <div><b>Document Type:</b> ${r.doc_type} ${r.confidence !== null ? '(Confidence: ' + r.confidence + ')' : ''}</div>
+              <div><b>Application Name:</b> ${r.user_name}</div>
+              <div style="margin-top:10px;">
+                ${r.match_scores ? Object.entries(r.match_scores).map(([field, score]) => `
+                  <div>
+                    <b>${field}:</b>
+                    <span class="score-bar" style="width:${score}px;background:linear-gradient(90deg,#43d9ad 0%,#b8c1ec 100%);"></span>
+                    <span class="score-label">${score !== undefined ? score + '%' : 'N/A'}</span>
+                    <span class="${score >= 80 ? 'pass' : 'fail'}">
+                      ${score >= 80 ? '&#10004;' : '&#10008;'}
+                    </span>
+                  </div>
+                `).join('') : ''}
+              </div>
+              ${r.fields && Object.keys(r.fields).length > 0 ? `<details><summary>Show extracted fields</summary><pre>${Object.entries(r.fields).map(([k, v]) => k + ': ' + v).join('\n')}</pre></details>` : ''}
+              <details><summary>Show raw OCR text</summary><pre>${r.raw_text}</pre></details>
+              ${r.annotated_image ? `<details><summary>Show annotated image</summary><img src="data:image/jpeg;base64,${r.annotated_image}" style="max-width:100%;border-radius:8px;margin-top:10px;" /></details>` : ''}
+            </div>
+          </div>
+        `;
+        resultSection.innerHTML += html;
+      });
+    }
+  </script>
+</body>
+</html>
