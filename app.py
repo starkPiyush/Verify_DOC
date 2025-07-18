@@ -57,6 +57,20 @@ document_keywords = {
     "Transgender Certificate": ["transgender", "gender identity", "third gender"]
 }
 
+# Required fields per document for fuzzy matching
+DOCUMENT_FIELDS = {
+    "Aadhar Card": ["aadhar_number", "name", "dob", "address"],
+    "PAN Card": ["DOB", "Name", "Pan Number"],
+    "Transgender Certificate": ["Identity card number", "Name", "Gender", "Identity card reference number"],
+    "Caste certificate": ["Name", "Caste", "Caste-Category"],
+    "Marksheet": ["name", "roll_number", "percentage"],
+    "Bonafide Certificate": ["college_name", "student_name", "class", "academic_year"],
+    "Birth Certificate": ["Name", "Date"],
+    "Passport and VISA": ["Name", "Date Of Expiry"],
+    "Current Month Salary Slip": ["EMPNO", "EMPName", "Designation"],
+    "Handicap smart card":["Name", "UDI_ID", "Disability_Type", "Disability%"]
+}
+
 DOC_MODEL_PATHS = {
     "Aadhar Card": "models/aadhaar.pt",
     "PAN Card": "models/pan_best.pt",
@@ -310,6 +324,13 @@ def run_yolo_ocr(image, model_path):
         cv2.putText(image_drawn, class_name, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     return fields, image_drawn
 
+@app.route('/document_fields/<doc_type>')
+def get_document_fields(doc_type):
+    print(f"[DEBUG] /document_fields called with doc_type: '{doc_type}'")
+    # Return the required fields for a given document type
+    fields = DOCUMENT_FIELDS.get(doc_type, [])
+    return jsonify({"fields": fields})
+
 @app.route('/')
 def index():
     return render_template('index.html', doc_types=list(document_keywords.keys()))
@@ -365,9 +386,42 @@ def process_documents_api():
             doc_type = doc_type or classify_document(file_path)[0]
 
             doc_info = process_document(file_path, doc_type)
-            extracted_name = doc_info["extracted_name"]
-            match_score = fuzzy_match_name(extracted_name, user_name)
-            match_result = "pass" if match_score >= 80 else "fail"
+            extracted_fields = doc_info.get("fields", {})
+            # For backward compatibility, also include extracted_name
+            extracted_name = doc_info.get("extracted_name", "")
+
+            # Get required fields for this document type
+            required_fields = DOCUMENT_FIELDS.get(doc_type, [])
+            match_scores = {}
+            match_results = {}
+            user_fields = {}
+
+            for field in required_fields:
+                # User input field name in form: fields_{idx}_{field}
+                form_key = f"fields_{idx}_{field}"
+                user_value = request.form.get(form_key, "").strip()
+                user_fields[field] = user_value
+
+                # Try to get extracted value from extracted_fields, fallback to extracted_name for "name"
+                extracted_value = ""
+                # Try several possible keys for "name" field
+                if field.lower() == "name":
+                    # Try "name", "student_name", "extracted_name"
+                    extracted_value = (
+                        extracted_fields.get("name") or
+                        extracted_fields.get("student_name") or
+                        extracted_name
+                    )
+                else:
+                    extracted_value = extracted_fields.get(field, "")
+
+                # Compute fuzzy score
+                score = fuzzy_match_name(extracted_value, user_value)
+                match_scores[field] = score
+                match_results[field] = "pass" if score >= 80 else "fail"
+
+                # Logging for validation
+                print(f"[DEBUG] File: {file.filename}, Field: {field}, User: '{user_value}', Extracted: '{extracted_value}', Score: {score}")
 
             results.append({
                 "filename": file.filename,
@@ -375,10 +429,10 @@ def process_documents_api():
                 "confidence": confidence,
                 "extracted_name": extracted_name,
                 "user_name": user_name,
-                "match_score": match_score,
-                "match_result": match_result,
+                "match_scores": match_scores,
+                "match_results": match_results,
                 "raw_text": doc_info["raw_text"],
-                "fields": doc_info.get("fields", {}),
+                "fields": extracted_fields,
                 "annotated_image": doc_info.get("annotated_image", None)
             })
 

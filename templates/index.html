@@ -671,6 +671,32 @@
                     if (data.results) {
                         let html = '';
                         data.results.forEach(r => {
+                            // Map YOLO Aadhar keys to field names for display
+                            if (r.doc_type === "Aadhar Card") {
+                                const aadharMap = {
+                                    "0": "aadhar_number",
+                                    "1": "dob",
+                                    "2": "gender",
+                                    "3": "name",
+                                    "4": "address"
+                                };
+                                // Remap fields
+                                if (r.fields) {
+                                    const newFields = {};
+                                    Object.entries(r.fields).forEach(([k, v]) => {
+                                        newFields[aadharMap[k] || k] = v;
+                                    });
+                                    r.fields = newFields;
+                                }
+                                // Remap match_scores
+                                if (r.match_scores) {
+                                    const newScores = {};
+                                    Object.entries(r.match_scores).forEach(([k, v]) => {
+                                        newScores[aadharMap[k] || k] = v;
+                                    });
+                                    r.match_scores = newScores;
+                                }
+                            }
                             html += `<div class="result-item">
                                 <div class="file-card-icon">${getFileIcon(r.filename)}</div>
                                 <div class="file-card-content">
@@ -679,7 +705,7 @@
                                 <p><b>Extracted Name:</b> ${r.extracted_name || '<i>Not found</i>'}</p>
                                 <p><b>Application Name:</b> ${r.user_name}</p>
                                 ${r.match_scores ? Object.entries(r.match_scores).map(([field, score]) => `
-                                    <p><b>${field}:</b> 
+                                    <p><b>${field}:</b>
                                         <br/><b>Match Score:</b> ${score !== undefined ? score + '%' : 'N/A'}
                                         <span class="${score >= 80 ? 'pass' : 'fail'}">
                                             ${score >= 80 ? '&#10004;' : '&#10008;'}
