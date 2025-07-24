@@ -45,30 +45,46 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 document_keywords = {
-    "Aadhar Card": ["uidai", "unique identification authority of india", "government of india", "aadhaar"],
+    "Aadhar Card": ["uidai", "unique identification authority of india", "government of india", "Government of India", "Your Aadhaar No."],
     "PAN Card": ["income tax department", "permanent account number", "pan", "govt of india"],
     "Handicap smart card": ["smart card", "disability", "handicap card", "govt issued"],
     "Birth Certificate": ["birth certificate", "date of birth", "place of birth"],
     "Bonafide Certificate": ["bonafide", "student", "institution", "studying", "enrolled"],
     "Caste certificate": ["caste", "category", "scheduled caste", "scheduled tribe", "other backward class"],
     "Current Month Salary Slip": ["salary", "monthly pay", "employee code", "basic pay"],
-    "Passport and VISA": ["passport", "visa", "republic of india", "expiry date"],
+    "Passport and VISA": ["passport", "visa", "Republic of India", "expiry date"],
     "Marksheet": ["marks", "subject", "grade", "exam", "percentage", "semester"],
-    "Transgender Certificate": ["transgender", "gender identity", "third gender"]
+    "Transgender Certificate": ["transgender", "gender identity", "third gender"],
+    "Light Bill": ["mahadiscom", "MahaVitaran", "महावितरण"]
 }
 
 # Required fields per document for fuzzy matching
+# DOCUMENT_FIELDS = {
+#     "Aadhar Card": ["aadhar_number", "name", "dob", "address"],
+#     "PAN Card": ["DOB", "Name", "Pan Number"],
+#     "Transgender Certificate": ["Identity card number", "Name", "Gender", "Identity card reference number"],
+#     "Caste certificate": ["Name", "Caste", "Caste-Category"],
+#     "Marksheet": ["name", "roll_number", "percentage"],
+#     "Bonafide Certificate": ["college_name", "student_name", "class", "academic_year"],
+#     "Birth Certificate": ["Name", "Date"],
+#     "Passport and VISA": ["Name", "Date Of Expiry"],
+#     "Current Month Salary Slip": ["EMPNO", "EMPName", "Designation"],
+#     "Handicap smart card":["Name", "UDI_ID", "Disability_Type", "Disability%"],
+#     "Light Bill": ["Address", "Date"]
+# }
+
 DOCUMENT_FIELDS = {
-    "Aadhar Card": ["aadhar_number", "name", "dob", "address"],
+    "Aadhar Card": ["Aadhaar number"],
     "PAN Card": ["DOB", "Name", "Pan Number"],
-    "Transgender Certificate": ["Identity card number", "Name", "Gender", "Identity card reference number"],
-    "Caste certificate": ["Name", "Caste", "Caste-Category"],
-    "Marksheet": ["name", "roll_number", "percentage"],
-    "Bonafide Certificate": ["college_name", "student_name", "class", "academic_year"],
+    "Transgender Certificate": ["Identity card number", "Gender", "Identity card reference number"],
+    "Caste certificate": ["Caste", "Caste-Category"],
+    "Marksheet": ["roll_number", "percentage"],
+    "Bonafide Certificate": ["college_name", "class", "academic_year"],
     "Birth Certificate": ["Name", "Date"],
-    "Passport and VISA": ["Name", "Date Of Expiry"],
+    "Passport and VISA": ["Date Of Expiry"],
     "Current Month Salary Slip": ["EMPNO", "EMPName", "Designation"],
-    "Handicap smart card":["Name", "UDI_ID", "Disability_Type", "Disability%"]
+    "Handicap smart card":["UDI_ID", "Disability_Type", "Disability%"],
+    "Light Bill": ["Address", "Date"]
 }
 
 DOC_MODEL_PATHS = {
@@ -81,7 +97,8 @@ DOC_MODEL_PATHS = {
     "Current Month Salary Slip": "models/salaryslipbest.pt",
     "Passport and VISA": "models/passport.pt",
     "Marksheet": None,
-    "Transgender Certificate": "models/trans_best.pt"
+    "Transgender Certificate": "models/trans_best.pt",
+    "Light Bill": "models/lightbill_best.pt"
 }
 
 def extract_bonafide_fields(image):
@@ -307,6 +324,14 @@ def image_to_base64(image):
     img_str = base64.b64encode(buffer).decode('utf-8')
     return img_str
 
+AADHAR_CLASS_ID_TO_FIELD = {
+    0: "Aadhaar number",
+    1: "DOB",
+    2: "Gender",
+    3: "Name",
+    4: "Address"
+}
+
 def run_yolo_ocr(image, model_path):
     from ultralytics import YOLO
     model = YOLO(model_path)
@@ -317,7 +342,10 @@ def run_yolo_ocr(image, model_path):
     for i, box in enumerate(results.boxes):
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         cls_id = int(box.cls[0])
-        class_name = results.names[cls_id]
+        if model_path == "models/aadhaar.pt":
+            class_name = AADHAR_CLASS_ID_TO_FIELD.get(cls_id, f"class_{cls_id}")
+        else:
+            class_name = results.names[cls_id]
         text = pytesseract.image_to_string(Image.fromarray(image_rgb[y1:y2, x1:x2]), config='--psm 6').strip()
         fields[class_name] = text if text else "not_verified"
         cv2.rectangle(image_drawn, (x1, y1), (x2, y2), (0, 255, 0), 2)
