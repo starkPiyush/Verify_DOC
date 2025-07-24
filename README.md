@@ -57,6 +57,7 @@ pip install -r requirements.txt
 ```
 Flask
 Flask-Cors
+flasgger
 pymongo
 pytesseract
 opencv-python
