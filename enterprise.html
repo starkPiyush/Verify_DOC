@@ -633,29 +633,64 @@
         <h2>Enterprise Document Verification</h2>
         <div class="subtitle">AI-powered, secure, and customizable verification for your business needs.</div>
         
-        <div class="service-links">
-            <a href="#" class="service-link">
-                <div class="service-link-inner">
-                    <span>Document Guidelines</span>
-                    <span class="arrow-icon">→</span>
-                </div>
-            </a>
-            <a href="#" class="service-link">
-                <div class="service-link-inner">
-                    <span>Verification Status</span>
-                    <span class="arrow-icon">→</span>
-                </div>
-            </a>
-        </div>
-        
+<div style="display: flex; justify-content: center; margin: 20px 0;">
+  <!-- Combined Box -->
+  <div id="combinedBox" style="border: 1px solid #ccc; padding: 20px; border-radius: 8px; background-color: #f9f9f9; color: #00527C; font-weight: 500; transition: all 0.3s ease; width: 400px;">
+    
+    <!-- API Documentation Section -->
+    <a href="http://192.168.0.29:5000/apidocs/" target="_blank" rel="noopener" style="text-decoration: none; color: inherit; display: block; text-align: center; margin-bottom: 15px;">
+      <div style="font-size: 1.1em;">API Documentation</div>
+      <div style="margin-top: 5px; font-size: 0.9em; color: #495057;">See all API endpoints, request/response formats, and try them interactively.</div>
+    </a>
+    
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+    
+    <!-- Supported Documents Section -->
+    <div onclick="toggleDocuments()" style="cursor: pointer; text-align: center;">
+      <div style="font-size: 1.1em; text-align: center; margin-bottom: 10px;">Supported Documents</div>
+      <ul id="docList" style="list-style-type: disc; font-size: 0.95em; color: #495057; line-height: 1.6; display: none; text-align: left; display: inline-block; padding-left: 20px;">
+        <li>Aadhar Card</li>
+        <li>PAN Card</li>
+        <li>Handicap Smart Card</li>
+        <li>Birth Certificate</li>
+        <li>Bonafide Certificate</li>
+        <li>Caste Certificate</li>
+        <li>Current Month Salary Slip</li>
+        <li>Passport and VISA</li>
+        <li>Marksheet</li>
+        <li>Transgender Certificate</li>
+        <li>Light Bill</li>
+      </ul>
+      <div id="clickText" style="font-size: 0.9em; color: #495057; text-align: center;">Click to view supported documents</div>
+    </div>
+    
+  </div>
+</div>
+
+<script>
+function toggleDocuments() {
+  const docList = document.getElementById('docList');
+  const clickText = document.getElementById('clickText');
+  const combinedBox = document.getElementById('combinedBox');
+  
+  if (docList.style.display === 'none') {
+    docList.style.display = 'block';
+    clickText.style.display = 'none';
+    combinedBox.style.minHeight = '350px';
+    combinedBox.style.width = '500px';
+  } else {
+    docList.style.display = 'none';
+    clickText.style.display = 'block';
+    combinedBox.style.minHeight = 'auto';
+    combinedBox.style.width = '400px';
+  }
+}
+</script>
+
+
+
         <label for="apiKeyInput">API Key</label>
-        <p style="margin-bottom:8px;">
-          <a href="http://192.168.0.29:5000/apidocs/" target="_blank" rel="noopener" style="color:#00527C;text-decoration:underline;font-weight:500;">
-            View API Documentation (Swagger UI)
-          </a>
-          <br>
-          <span style="font-size:0.98em;color:#495057;">See all API endpoints, request/response formats, and try them interactively.</span>
-        </p>
+        
         <input id="apiKeyInput" type="text" placeholder="Paste your API key here">
         <div id="errorAlert"></div>
         
@@ -684,7 +719,7 @@
             });
         });
         
-        const SERVER_URL = "http://<LAN_SERVER>:5000";
+        const SERVER_URL = "http://192.168.0.29:5000";
         let files = [];
         let fileStates = [];
         let requiredFieldsMap = {}; // { idx: [fields] }
