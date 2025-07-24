@@ -1,8 +1,11 @@
-flask
-pillow
-pdf2image
+Flask
+Flask-Cors
+pymongo
+pytesseract
 opencv-python
+pdf2image
+Pillow
 numpy
-pytesseract 
 rapidfuzz
 ultralytics
+uuid
