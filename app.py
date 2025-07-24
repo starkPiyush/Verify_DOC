@@ -15,6 +15,9 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime
 
+# Swagger/OpenAPI imports
+from flasgger import Swagger
+
 # API_KEYS_FILE = 'api_keys.json'
 
 # def load_api_keys():
@@ -40,6 +43,25 @@ api_keys_collection = db["api_keys"]
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
+
+# Swagger configuration
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Document Verifier API",
+        "description": "API for document verification, classification, and API key management. Includes endpoints for document processing, classification, and API key generation/validation.",
+        "version": "1.0.0"
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+            "description": "API key required for enterprise endpoints"
+        }
+    }
+}
+swagger = Swagger(app, template=swagger_template)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -354,6 +376,28 @@ def run_yolo_ocr(image, model_path):
 
 @app.route('/document_fields/<doc_type>')
 def get_document_fields(doc_type):
+    """
+    Get required fields for a document type
+    ---
+    tags:
+      - Document Metadata
+    parameters:
+      - name: doc_type
+        in: path
+        type: string
+        required: true
+        description: The type of document (e.g., 'Aadhar Card', 'PAN Card')
+    responses:
+      200:
+        description: List of required fields for the document type
+        schema:
+          type: object
+          properties:
+            fields:
+              type: array
+              items:
+                type: string
+    """
     print(f"[DEBUG] /document_fields called with doc_type: '{doc_type}'")
     # Return the required fields for a given document type
     fields = DOCUMENT_FIELDS.get(doc_type, [])
@@ -361,10 +405,51 @@ def get_document_fields(doc_type):
 
 @app.route('/')
 def index():
+    """
+    Render the main index page.
+    ---
+    tags:
+      - Frontend
+    responses:
+      200:
+        description: Renders the main HTML page for document upload and API key generation.
+        content:
+          text/html:
+            schema:
+              type: string
+    """
     return render_template('index.html', doc_types=list(document_keywords.keys()))
 
 @app.route('/classify_document', methods=['POST'])
 def classify_document_api():
+    """
+    Classify a document type
+    ---
+    tags:
+      - Document Processing
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: The document file to classify (image or PDF)
+    responses:
+      200:
+        description: Document type and confidence score
+        schema:
+          type: object
+          properties:
+            document_type:
+              type: string
+            confidence:
+              type: integer
+      400:
+        description: No file uploaded
+      500:
+        description: Internal server error
+    """
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
@@ -381,11 +466,80 @@ def classify_document_api():
 
 @app.route('/process_documents', methods=['POST'])
 def process_documents_api():
+    """
+    Process uploaded documents and validate fields
+    ---
+    tags:
+      - Document Processing
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: files
+        in: formData
+        type: file
+        required: true
+        description: One or more document files to process (images or PDFs)
+        collectionFormat: multi
+      - name: user_name
+        in: formData
+        type: string
+        required: false
+        description: Name of the user (for validation)
+      - name: confirmed_types
+        in: formData
+        type: array
+        items:
+          type: string
+        required: false
+        description: List of confirmed document types (optional, for each file)
+      - name: fields_{idx}_{field}
+        in: formData
+        type: string
+        required: false
+        description: User-provided value for a required field (replace {idx} and {field} accordingly)
+    security:
+      - ApiKeyAuth: []
+    responses:
+      200:
+        description: Results of document processing and field validation
+        schema:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  doc_type:
+                    type: string
+                  confidence:
+                    type: integer
+                  extracted_name:
+                    type: string
+                  user_name:
+                    type: string
+                  match_scores:
+                    type: object
+                  match_results:
+                    type: object
+                  raw_text:
+                    type: string
+                  fields:
+                    type: object
+                  annotated_image:
+                    type: string
+      403:
+        description: Missing or invalid API key (for enterprise usage)
+      500:
+        description: Internal server error
+    """
     try:
         # Determine where request is coming from (Referer or Origin)
         referer = request.headers.get("Referer", "") or request.headers.get("Origin", "")
         require_api_key = "enterprise" in referer.lower()
-
+    
         # If enterprise.html is being used, enforce API Key validation
         if require_api_key:
             api_key = request.headers.get("X-API-Key")
@@ -396,40 +550,40 @@ def process_documents_api():
                 return jsonify({'error': 'Invalid API key'}), 403
         else:
             print("[PUBLIC DEMO] Request from index.html or external client. No API key required.")
-
+    
         # Process uploaded documents
         files = request.files.getlist('files')
         user_name = request.form.get('user_name', '').strip()
         confirmed_types = request.form.getlist('confirmed_types')
         results = []
-
+    
         for idx, file in enumerate(files):
             file_id = str(uuid.uuid4())
             file_extension = file.filename.split('.')[-1].lower()
             file_path = os.path.join(UPLOAD_FOLDER, f"{file_id}.{file_extension}")
             file.save(file_path)
-
+    
             doc_type = confirmed_types[idx] if idx < len(confirmed_types) and confirmed_types[idx] else None
             confidence = None if doc_type else classify_document(file_path)[1]
             doc_type = doc_type or classify_document(file_path)[0]
-
+    
             doc_info = process_document(file_path, doc_type)
             extracted_fields = doc_info.get("fields", {})
             # For backward compatibility, also include extracted_name
             extracted_name = doc_info.get("extracted_name", "")
-
+    
             # Get required fields for this document type
             required_fields = DOCUMENT_FIELDS.get(doc_type, [])
             match_scores = {}
             match_results = {}
             user_fields = {}
-
+    
             for field in required_fields:
                 # User input field name in form: fields_{idx}_{field}
                 form_key = f"fields_{idx}_{field}"
                 user_value = request.form.get(form_key, "").strip()
                 user_fields[field] = user_value
-
+    
                 # Try to get extracted value from extracted_fields, fallback to extracted_name for "name"
                 extracted_value = ""
                 # Try several possible keys for "name" field
@@ -442,15 +596,15 @@ def process_documents_api():
                     )
                 else:
                     extracted_value = extracted_fields.get(field, "")
-
+    
                 # Compute fuzzy score
                 score = fuzzy_match_name(extracted_value, user_value)
                 match_scores[field] = score
                 match_results[field] = "pass" if score >= 80 else "fail"
-
+    
                 # Logging for validation
                 print(f"[DEBUG] File: {file.filename}, Field: {field}, User: '{user_value}', Extracted: '{extracted_value}', Score: {score}")
-
+    
             results.append({
                 "filename": file.filename,
                 "doc_type": doc_type,
@@ -463,17 +617,50 @@ def process_documents_api():
                 "fields": extracted_fields,
                 "annotated_image": doc_info.get("annotated_image", None)
             })
-
+    
             os.remove(file_path)
-
+    
         return jsonify({"results": results})
-
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
     
 @app.route('/generate_api_key', methods=['POST'])
 def generate_key():
+    """
+    Generate an API key for a user/company
+    ---
+    tags:
+      - API Key Management
+    consumes:
+      - application/json
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              description: User's email address
+            company:
+              type: string
+              description: Company name (optional)
+    responses:
+      200:
+        description: API key generated (or already exists)
+        schema:
+          type: object
+          properties:
+            api_key:
+              type: string
+            message:
+              type: string
+      400:
+        description: Email is required
+    """
     data = request.get_json()
     email = data.get("email")
     company = data.get("company", "Unknown")
@@ -501,4 +688,5 @@ def generate_key():
 
 
 if __name__ == "__main__":
+    print("Swagger UI available at http://localhost:5000/apidocs/")
     app.run(debug=True, host='0.0.0.0', port=5000)
