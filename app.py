@@ -14,7 +14,8 @@ from hashlib import sha256
 from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime
-
+import pdfplumber
+from ollama import chat
 # Swagger/OpenAPI imports
 from flasgger import Swagger
 
@@ -77,7 +78,9 @@ document_keywords = {
     "Passport and VISA": ["passport", "visa", "Republic of India", "expiry date"],
     "Marksheet": ["marks", "subject", "grade", "exam", "percentage", "semester"],
     "Transgender Certificate": ["transgender", "gender identity", "third gender"],
-    "Light Bill": ["mahadiscom", "MahaVitaran", "महावितरण"]
+    "Light Bill": ["mahadiscom", "MahaVitaran", "महावितरण"],
+    "Stability Certificate/Approval from engineer with maps/drawings": ["engineer approval", "engineer name", "license number", "structural design", "maps", "drawings"],
+    "GST Registration Certificate": ["legal name", "trade name", "constitution of business", "gstin", "principal place of business", "date of liability", "type of registration", "registration"]
 }
 
 # Required fields per document for fuzzy matching
@@ -106,7 +109,10 @@ DOCUMENT_FIELDS = {
     "Passport and VISA": ["Date Of Expiry"],
     "Current Month Salary Slip": ["EMPNO", "EMPName", "Designation"],
     "Handicap smart card":["UDI_ID", "Disability_Type", "Disability%"],
-    "Light Bill": ["Address", "Date"]
+    "Light Bill": ["Address", "Date"],
+    "Stability Certificate/Approval from engineer with maps/drawings": ["Engineer Approval", "Engineer Name", "License Number"],
+    "GST Registration Certificate": ["Legal Name", "Trade Name", "Constitution of Buisness", "Address of Principal Place of Buisness", "Date of Liability", "Type of Registration", "GSTIN"]
+
 }
 
 DOC_MODEL_PATHS = {
@@ -120,7 +126,10 @@ DOC_MODEL_PATHS = {
     "Passport and VISA": "models/passport.pt",
     "Marksheet": None,
     "Transgender Certificate": "models/trans_best.pt",
-    "Light Bill": "models/lightbill_best.pt"
+    "Light Bill": "models/lightbill_best.pt",
+    "Stability Certificate/Approval from engineer with maps/drawings": None,
+    "GST Registration Certificate": None
+
 }
 
 def extract_bonafide_fields(image):
@@ -227,6 +236,48 @@ def load_image(file_path):
     else:
         return cv2.cvtColor(np.array(Image.open(file_path).convert("RGB")), cv2.COLOR_RGB2BGR)
 
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text and len(page_text.strip()) > 0:
+                text += page_text + "\n"
+            else:
+                # Fallback to OCR for scanned pages
+                img = page.to_image(resolution=300)
+                pil_img = img.original
+                ocr_text = pytesseract.image_to_string(pil_img)
+                text += ocr_text + "\n"
+    return text
+
+def build_gemma_prompt(extracted_text, doc_type, fields):
+    if doc_type == "Stability Certificate/Approval from engineer with maps/drawings":
+        prompt = f"""
+        Consider yourself as an expert in reading and understanding the text extracted by OCR. The following is the extracted text:
+        {extracted_text}
+        The text shared is of the document of Design approval of a hoarding to be placed in a public place by a Structural Engineer.
+        For verification, if any document with the type {doc_type} is shared, look for the following fields for checking.
+        Fields to be searched are {fields}, and where to find them can be known by the following description.
+        'This is to certify that I have checked the structural design for the proposed boarding' or similar lines will be called Engineer Approval.
+        The next field to be checked is the name of the engineer, which could be found at the top or bottom of the extracted text; this will be called Engineer Name.
+        Finally, the license number of the engineer will be present in the text, which can be found under the Engineer Name.
+        Return the result as a JSON object with the field names as keys.
+        """
+        return prompt
+    elif doc_type == "GST Registration Certificate":
+        prompt = f"""
+        Consider yourself as an expert in reading and understanding the text extracted by OCR. The following is the extracted text:
+        {extracted_text}
+        The text shared is of a GST Registration Certificate.
+        For verification, if any document with the type {doc_type} is shared, look for the following fields for checking.
+        Fields to be searched are {fields}, and where to find them can be known by the following description.
+        The certificate is a table where the fields are on the right-hand side and their values/answers will be on the left-hand side.
+        Return the result as a JSON object with the field names as keys.
+        """
+        return prompt
+    return ""
+
 # def extract_name_from_text(text):
 #     # Simple regex for name extraction, can be improved per document type
 #     match = re.search(r'[:\s]+([A-Z][a-zA-Z\s]+)', text, re.IGNORECASE)
@@ -269,22 +320,78 @@ def extract_name_from_text(text):
 
 
 def process_document(file_path, doc_type):
-    image = load_image(file_path)
+    ext = file_path.split('.')[-1].lower()
+    # Multi-page PDF support for all document types
+    if ext == 'pdf':
+        extracted_text = extract_text_from_pdf(file_path)
+    else:
+        image = Image.open(file_path)
+        extracted_text = pytesseract.image_to_string(image)
+
+    # Ollama/Gemma for special documents
+    if doc_type in ["Stability Certificate/Approval from engineer with maps/drawings", "GST Registration Certificate"]:
+        fields = {}
+        prompt = build_gemma_prompt(extracted_text, doc_type, DOCUMENT_FIELDS[doc_type])
+        try:
+            import ast
+            response = chat(model='gemma3:4b', messages=[{'role': 'user', 'content': prompt}])
+            result = response['message']['content']
+            # Try to parse JSON from result using multiple strategies
+            fields = None
+            try:
+                fields = json.loads(result)
+            except Exception:
+                try:
+                    # Try ast.literal_eval for pseudo-JSON
+                    fields = ast.literal_eval(result)
+                except Exception:
+                    try:
+                        # Try to clean up the result (remove code block markers, etc.)
+                        cleaned = result.strip()
+                        if cleaned.startswith('```json'):
+                            cleaned = cleaned.replace('```json', '').replace('```', '').strip()
+                        fields = json.loads(cleaned)
+                    except Exception:
+                        print(f"[GEMMA RAW OUTPUT] {result}")
+                        # Fallback: extract fields using simple string matching
+                        fields = {}
+                        for field in DOCUMENT_FIELDS[doc_type]:
+                            # Look for 'Field: value' or 'Field - value' in result
+                            pattern = re.compile(rf'{re.escape(field)}\s*[:\-]\s*(.*)', re.IGNORECASE)
+                            match = pattern.search(result)
+                            if match:
+                                fields[field] = match.group(1).strip()
+                            else:
+                                # Try to find the field as a key in a pseudo-JSON
+                                pattern2 = re.compile(rf'"?{re.escape(field)}"?\s*[:\-]\s*"?([^",\n]+)"?', re.IGNORECASE)
+                                match2 = pattern2.search(result)
+                                if match2:
+                                    fields[field] = match2.group(1).strip()
+                                else:
+                                    fields[field] = ""
+                        fields["gemma_raw"] = result
+            if not isinstance(fields, dict):
+                fields = {"gemma_raw": result}
+        except Exception as e:
+            fields = {"gemma_error": str(e)}
+        return {
+            "extracted_name": fields.get("Engineer Name", fields.get("Legal Name", "")),
+            "raw_text": extracted_text,
+            "fields": fields,
+            "annotated_image": None
+        }
+    # YOLO-based extraction
     model_path = DOC_MODEL_PATHS.get(doc_type)
     if model_path and os.path.exists(model_path):
+        image = load_image(file_path)
         fields, annotated_image = run_yolo_ocr(image, model_path)
-        # Try to extract name from YOLO fields
         extracted_name = ""
         for k, v in fields.items():
             if "name" in k.lower():
                 extracted_name = v
                 break
         if not extracted_name:
-            # fallback to OCR
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
-            extracted_name = extract_name_from_text(text)
-        # Format all fields as key-value pairs
+            extracted_name = extract_name_from_text(extracted_text)
         raw_text = "\n".join([f"{k}: {v}" for k, v in fields.items()])
         return {
             "extracted_name": extracted_name,
@@ -292,29 +399,26 @@ def process_document(file_path, doc_type):
             "fields": fields,
             "annotated_image": image_to_base64(annotated_image)
         }
-    else:
-        # For regex-based documents
-        if doc_type in ["Bonafide Certificate", "Marksheet"]:
-            fields, annotated_image = process_with_regex(image, doc_type)
-            extracted_name = fields.get("student_name") or extract_name_from_text(pytesseract.image_to_string(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)))
-            raw_text = "\n".join([f"{k}: {v}" for k, v in fields.items()])
-            return {
-                "extracted_name": extracted_name,
-                "raw_text": raw_text,
-                "fields": fields,
-                "annotated_image": image_to_base64(annotated_image)
-            }
-        else:
-            # Generic fallback
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            text = pytesseract.image_to_string(gray, config='--oem 3 --psm 6')
-            name = extract_name_from_text(text)
-            return {
-                "extracted_name": name,
-                "raw_text": text,
-                "fields": {},
-                "annotated_image": None
-            }
+    # Regex-based extraction
+    if doc_type in ["Bonafide Certificate", "Marksheet"]:
+        image = load_image(file_path)
+        fields, annotated_image = process_with_regex(image, doc_type)
+        extracted_name = fields.get("student_name") or extract_name_from_text(extracted_text)
+        raw_text = "\n".join([f"{k}: {v}" for k, v in fields.items()])
+        return {
+            "extracted_name": extracted_name,
+            "raw_text": raw_text,
+            "fields": fields,
+            "annotated_image": image_to_base64(annotated_image)
+        }
+    # Generic fallback
+    name = extract_name_from_text(extracted_text)
+    return {
+        "extracted_name": name,
+        "raw_text": extracted_text,
+        "fields": {},
+        "annotated_image": None
+    }
 
 
 def normalize_name(name):
@@ -374,7 +478,7 @@ def run_yolo_ocr(image, model_path):
         cv2.putText(image_drawn, class_name, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     return fields, image_drawn
 
-@app.route('/document_fields/<doc_type>')
+@app.route('/document_fields/<path:doc_type>')
 def get_document_fields(doc_type):
     """
     Get required fields for a document type
@@ -398,9 +502,22 @@ def get_document_fields(doc_type):
               items:
                 type: string
     """
-    print(f"[DEBUG] /document_fields called with doc_type: '{doc_type}'")
-    # Return the required fields for a given document type
-    fields = DOCUMENT_FIELDS.get(doc_type, [])
+    from urllib.parse import unquote
+    doc_type_decoded = unquote(doc_type)
+    def norm(s):
+        return s.lower().replace(' ', '').replace('_', '').replace('/', '')
+    doc_type_norm = norm(doc_type_decoded)
+    normalized_keys = {k: norm(k) for k in DOCUMENT_FIELDS.keys()}
+    print(f"[DEBUG] /document_fields called with doc_type: '{doc_type}' (decoded: '{doc_type_decoded}')")
+    print(f"[DEBUG] Normalized doc_type: '{doc_type_norm}'")
+    print(f"[DEBUG] All normalized keys: {normalized_keys}")
+    match_key = None
+    for k, v in normalized_keys.items():
+        if v == doc_type_norm:
+            match_key = k
+            break
+    print(f"[DEBUG] Match key: {match_key}")
+    fields = DOCUMENT_FIELDS.get(match_key, [])
     return jsonify({"fields": fields})
 
 @app.route('/')
@@ -578,30 +695,39 @@ def process_documents_api():
             match_results = {}
             user_fields = {}
     
+            # Normalize extracted field keys for robust matching
+            extracted_fields_norm = {k.lower().replace(" ","").replace("_",""): v for k, v in extracted_fields.items()}
             for field in required_fields:
                 # User input field name in form: fields_{idx}_{field}
                 form_key = f"fields_{idx}_{field}"
                 user_value = request.form.get(form_key, "").strip()
                 user_fields[field] = user_value
-    
-                # Try to get extracted value from extracted_fields, fallback to extracted_name for "name"
+
+                # Normalize field name for matching
+                field_norm = field.lower().replace(" ","").replace("_","")
                 extracted_value = ""
                 # Try several possible keys for "name" field
-                if field.lower() == "name":
-                    # Try "name", "student_name", "extracted_name"
+                if field_norm == "name":
                     extracted_value = (
-                        extracted_fields.get("name") or
-                        extracted_fields.get("student_name") or
+                        extracted_fields_norm.get("name") or
+                        extracted_fields_norm.get("studentname") or
                         extracted_name
                     )
                 else:
-                    extracted_value = extracted_fields.get(field, "")
-    
+                    # Try direct match, then partial match
+                    extracted_value = extracted_fields_norm.get(field_norm, "")
+                    if not extracted_value:
+                        # Try partial match (field_norm in any key)
+                        for k, v in extracted_fields_norm.items():
+                            if field_norm in k:
+                                extracted_value = v
+                                break
+
                 # Compute fuzzy score
                 score = fuzzy_match_name(extracted_value, user_value)
                 match_scores[field] = score
                 match_results[field] = "pass" if score >= 80 else "fail"
-    
+
                 # Logging for validation
                 print(f"[DEBUG] File: {file.filename}, Field: {field}, User: '{user_value}', Extracted: '{extracted_value}', Score: {score}")
     
